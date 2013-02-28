@@ -85,8 +85,8 @@ class RangeManager
 
     $interval = bcdiv(bcsub($lastToken, $firstToken), $numRanges);
 
-    $allRanges = array();
     $prevToken = "";
+    $maxId = 0;
     for($tok = $firstToken; bccomp($tok, $lastToken) < 1; $tok = bcadd($tok, $interval))
     {
       if($prevToken !== "")
@@ -95,9 +95,9 @@ class RangeManager
         $range->startToken = $prevToken;
         $range->endToken   = $tok;
         $range->saveChanges();
-        $allRanges[] = $range;
       }
 
+      $maxId++;
       $prevToken = $tok;
     }
 
@@ -108,11 +108,12 @@ class RangeManager
       $range->startToken = $prevToken;
       $range->endToken   = $lastToken;
       $range->saveChanges();
-      $allRanges[] = $range;
+      $maxId++;
     }
 
-    foreach($allRanges as $range)
+    for($id = 1; $id <= $maxId; $id++)
     {
+      $range = new TokenRange($id);
       $this->refreshKeysForRange($range);
     }
   }
