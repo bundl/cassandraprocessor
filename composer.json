@@ -1,0 +1,17 @@
+{
+"name":              "bundl/cassandraprocessor",
+"description":       "Cubex Cassandra Processor",
+"version":           "0.0.1",
+"keywords":          ["cassandra", "cubex"],
+"homepage":          "http://cubex.io/bundl/cassandraprocessor",
+"minimum-stability": "dev",
+"license":           "BSD-3-Clause",
+"require":           {
+"php": ">=5.4.0"
+},
+"autoload":          {
+"psr-0": {
+"Bundl\\CassandraProcessor\\": "src/"
+}
+}
+}
