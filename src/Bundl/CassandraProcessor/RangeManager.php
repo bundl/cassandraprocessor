@@ -63,6 +63,7 @@ class RangeManager
 
   public function buildRanges($numRanges)
   {
+    echo "Creating ranges...\n";
     $partitionerType = $this->_getCF()->connection()->partitioner();
     switch($partitionerType)
     {
@@ -86,7 +87,6 @@ class RangeManager
     $interval = bcdiv(bcsub($lastToken, $firstToken), $numRanges);
 
     $prevToken = "";
-    $maxId = 0;
     for($tok = $firstToken; bccomp($tok, $lastToken) < 1; $tok = bcadd($tok, $interval))
     {
       if($prevToken !== "")
@@ -97,7 +97,6 @@ class RangeManager
         $range->saveChanges();
       }
 
-      $maxId++;
       $prevToken = $tok;
     }
 
@@ -108,14 +107,9 @@ class RangeManager
       $range->startToken = $prevToken;
       $range->endToken   = $lastToken;
       $range->saveChanges();
-      $maxId++;
     }
 
-    for($id = 1; $id <= $maxId; $id++)
-    {
-      $range = new TokenRange($id);
-      $this->refreshKeysForRange($range);
-    }
+    echo "Finished creating ranges.\n";
   }
 
   public function refreshKeysForRange(TokenRange $range)
