@@ -189,7 +189,8 @@ class RangeManager
       $res = $db->query(
         ParseQuery::parse(
           $db,
-          "UPDATE token_ranges SET processing=1, hostname=%s WHERE processing=0 AND processed=0 LIMIT 1",
+          "UPDATE token_ranges SET processing=1, hostname=%s " .
+          "WHERE processing=0 AND processed=0 ORDER BY RAND() LIMIT 1",
           $this->_hostname
         )
       );
@@ -236,7 +237,9 @@ class RangeManager
 
   public function processRange(TokenRange $range)
   {
-    Log::info("Processing range from '" . $range->firstKey . "' to '" . $range->lastKey . "'...");
+    Log::info(
+      "Processing range ID " . $range->id() . " from '" . $range->firstKey . "' to '" . $range->lastKey . "'..."
+    );
 
     $totalItems     = 0;
     $processedItems = 0;
@@ -415,7 +418,8 @@ class RangeManager
 
     // Display a nice report...
     Shell::clear();
-    $this->_displayReportHeader('Current Range');
+    $this->_displayReportHeader('Current Range', false);
+    echo Shell::colourText(" (" . $currentRange->id() . ")", Shell::COLOUR_FOREGROUND_LIGHT_GREY) . "\n";
     $this->_displayReportLine('Start token', $currentRange->startToken);
     $this->_displayReportLine('End token', $currentRange->endToken);
     $this->_displayReportLine('First key', $currentRange->firstKey);
@@ -439,11 +443,11 @@ class RangeManager
   }
 
 
-  private function _displayReportHeader($text)
+  private function _displayReportHeader($text, $newLine = true)
   {
     echo "\n ";
     echo Shell::colourText($text, Shell::COLOUR_FOREGROUND_LIGHT_RED);
-    echo "\n";
+    if($newLine) echo "\n";
   }
 
   private function _displayReportLine($label, $value)
