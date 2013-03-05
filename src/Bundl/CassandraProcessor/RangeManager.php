@@ -19,6 +19,8 @@ class RangeManager
   private $_columnFamily;
   private $_cf;
   private $_processor;
+  private $_minToken;
+  private $_maxToken;
 
   private $_startTime;
   private $_totalItems;
@@ -41,7 +43,28 @@ class RangeManager
     $this->_scriptProgress       = new ScriptProgress();
     $this->_hostname             = $hostname == "" ? gethostname() : $hostname;
 
+    // Work out the max token for this CF
+    $this->_calcMinMaxTokens();
+
     $this->resetCounters();
+  }
+
+  private function _calcMinMaxTokens()
+  {
+    $partitionerType = $this->_getCF()->connection()->partitioner();
+    switch($partitionerType)
+    {
+      case "org.apache.cassandra.dht.Murmur3Partitioner":
+        $this->_minToken = bcadd(bcpow("-2", "63"), "1");
+        $this->_maxToken  = bcsub(bcpow("2", "63"), "1");
+        break;
+      case "org.apache.cassandra.dht.RandomPartitioner":
+        $this->_minToken = "0";
+        $this->_maxToken  = bcpow("2", "127");
+        break;
+      default:
+        throw new \Exception('Unknown partitioner type: ' . $partitionerType);
+    }
   }
 
   public function resetCounters()
@@ -65,20 +88,8 @@ class RangeManager
   public function buildRanges($numRanges)
   {
     echo "Creating ranges... ";
-    $partitionerType = $this->_getCF()->connection()->partitioner();
-    switch($partitionerType)
-    {
-      case "org.apache.cassandra.dht.Murmur3Partitioner":
-        $firstToken = bcadd(bcpow("-2", "63"), "1");
-        $lastToken  = bcsub(bcpow("2", "63"), "1");
-        break;
-      case "org.apache.cassandra.dht.RandomPartitioner":
-        $firstToken = "0";
-        $lastToken  = bcpow("2", "127");
-        break;
-      default:
-        throw new \Exception('Unknown partitioner type: ' . $partitionerType);
-    }
+    $firstToken = $this->_minToken;
+    $lastToken = $this->_maxToken;
 
     // Delete all ranges from the DB
     $tableName = (new TokenRange())->getTableName();
@@ -149,7 +160,7 @@ class RangeManager
         if($lastItem)
         {
           $lastKey = key($lastItem);
-          if($lastKey)
+          if($lastKey || ($otherRange->endToken == $this->_maxToken))
           {
             $range->lastKey = $lastKey;
             $foundLastKey = true;
@@ -157,9 +168,16 @@ class RangeManager
         }
         $otherRangeStart = $otherRange->endToken;
       }
+      else if(($range->endToken == $this->_maxToken) || ($otherRangeStart == $this->_maxToken))
+      {
+        $range->lastKey = "";
+        $foundLastKey = true;
+      }
       else
       {
         echo "Error getting next token range (looking for range starting with token " . $otherRangeStart . ")\n";
+        echo "\nThis range:\n";
+        var_dump_json($range);
         die;
       }
     }
