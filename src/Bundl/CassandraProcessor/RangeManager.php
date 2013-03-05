@@ -332,12 +332,7 @@ class RangeManager
           $finished = true;
         }
 
-        $now = time();
-        if($finished || (($now - $lastReportTime) >= $this->reportInterval))
-        {
-          $lastReportTime = $now;
-          $this->displayReport($totalItems, $processedItems, $errors, $rangeStartTime, $lastKey);
-        }
+        $this->displayReport($finished, $range, $totalItems, $processedItems, $errors, $rangeStartTime, $lastKey);
       }
 
       $range->failed = $errors > 0 ? 1 : 0;
@@ -365,7 +360,9 @@ class RangeManager
     $range->saveChanges();
   }
 
-  public function displayReport($rangeTotal, $rangeProcessed, $rangeErrors, $rangeStartTime, $lastKey)
+  public function displayReport(
+    $forceLog, TokenRange $currentRange, $rangeTotal, $rangeProcessed, $rangeErrors, $rangeStartTime, $lastKey
+  )
   {
     static $lastRangeTotal = 0;
     static $lastReportTime = 0;
@@ -397,21 +394,70 @@ class RangeManager
       $currentRate = 0;
     }
 
-    $lastReportTime = $now;
+    if($forceLog || (($now - $lastReportTime) >= $this->reportInterval))
+    {
+      $lastReportTime = $now;
+      // Log the stats
+      Log::info(
+        "CURRENT RANGE: Run time " . $this->_secsToTime($now - $rangeStartTime) .
+        ", Processed " . $rangeProcessed . " of " . $rangeTotal . " items, " . $rangeErrors . " errors"
+      );
+      Log::info(
+        "OVERALL: Run time " . $this->_secsToTime($totalDuration) .
+        ", Processed " . $this->_processedItems . " of " . $this->_totalItems . " items, " .
+        $this->_errors . " errors"
+      );
+      Log::info(
+        "Current rate: " . $currentRate . " items/second, Average rate: " . $averageRate . " items/second"
+      );
+      Log::info("Last key: " . $lastKey);
+    }
 
-    Log::info(
-      "CURRENT RANGE: Run time " . $this->_secsToTime($now - $rangeStartTime) .
-      ", Processed " . $rangeProcessed . " of " . $rangeTotal . " items, " . $rangeErrors . " errors"
-    );
-    Log::info(
-      "OVERALL: Run time " . $this->_secsToTime($totalDuration) .
-      ", Processed " . $this->_processedItems . " of " . $this->_totalItems . " items, " .
-      $this->_errors . " errors"
-    );
-    Log::info(
-      "Current rate: " . $currentRate . " items/second, Average rate: " . $averageRate . " items/second"
-    );
-    Log::info("Last key: " . $lastKey);
+    // Display a nice report...
+    Shell::clear();
+    $this->_displayReportHeader('Current Range');
+    $this->_displayReportLine('Start token', $currentRange->startToken);
+    $this->_displayReportLine('End token', $currentRange->endToken);
+    $this->_displayReportLine('First key', $currentRange->firstKey);
+    $this->_displayReportLine('Last key', $currentRange->lastKey);
+    $this->_displayReportHeader('Range statistics');
+    $this->_displayReportLine('Processing time', $this->_secsToTime($now - $rangeStartTime));
+    $this->_displayReportLine('Total items', $rangeTotal);
+    $this->_displayReportLine('Processed items', $rangeProcessed);
+    $this->_displayReportLine('Skipped', ($rangeTotal - ($rangeProcessed + $rangeErrors)));
+    $this->_displayReportLine('Errors', $rangeErrors);
+    $this->_displayReportLine('Processing rate', $currentRate . ' items/second');
+    $this->_displayReportHeader('Total');
+    $this->_displayReportLine('Processing time', $this->_secsToTime($totalDuration));
+    $this->_displayReportLine('Total items', $this->_totalItems);
+    $this->_displayReportLine('Processed items', $this->_processedItems);
+    $this->_displayReportLine('Skipped', ($this->_totalItems - ($this->_processedItems + $this->_errors)));
+    $this->_displayReportLine('Errors', $this->_errors);
+    $this->_displayReportLine('Processing rate', $averageRate . ' items/second');
+    echo "\n";
+    $this->_displayReportLine('Last key processed', $lastKey);
+  }
+
+
+  private function _displayReportHeader($text)
+  {
+    echo "\n ";
+    echo Shell::colourText($text, Shell::COLOUR_FOREGROUND_LIGHT_RED);
+    echo "\n";
+  }
+
+  private function _displayReportLine($label, $value)
+  {
+    $labelSize = 18;
+    $labelColour = Shell::COLOUR_FOREGROUND_LIGHT_GREEN;
+    $colonColour = Shell::COLOUR_FOREGROUND_YELLOW;
+    $valueColour = Shell::COLOUR_FOREGROUND_WHITE;
+
+    $labelTxt = $label . str_repeat(" ", $labelSize - strlen($label));
+    echo "  " . Shell::colourText($labelTxt, $labelColour);
+    echo Shell::colourText(" : ", $colonColour);
+    echo Shell::colourText($value, $valueColour);
+    echo "\n";
   }
 
 
