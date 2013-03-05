@@ -6,6 +6,7 @@
 namespace Bundl\CassandraProcessor;
 
 use Bundl\CassandraProcessor\Mappers\TokenRange;
+use Cubex\Cli\Shell;
 use Cubex\Facade\Cassandra;
 use Cubex\Log\Log;
 use Cubex\Mapper\Database\RecordCollection;
@@ -63,7 +64,7 @@ class RangeManager
 
   public function buildRanges($numRanges)
   {
-    echo "Creating ranges...\n";
+    echo "Creating ranges... ";
     $partitionerType = $this->_getCF()->connection()->partitioner();
     switch($partitionerType)
     {
@@ -86,6 +87,7 @@ class RangeManager
 
     $interval = bcdiv(bcsub($lastToken, $firstToken), $numRanges);
 
+    $numCreated = 0;
     $prevToken = "";
     for($tok = $firstToken; bccomp($tok, $lastToken) < 1; $tok = bcadd($tok, $interval))
     {
@@ -96,6 +98,10 @@ class RangeManager
         $range->endToken   = $tok;
         $range->saveChanges();
       }
+
+      $numCreated++;
+      Shell::clearLine();
+      echo "Creating ranges... " . number_format($numCreated) . " / " . number_format($numRanges);
 
       $prevToken = $tok;
     }
@@ -109,7 +115,17 @@ class RangeManager
       $range->saveChanges();
     }
 
-    echo "Finished creating ranges.\n";
+    echo "\nFinished creating ranges.\n";
+  }
+
+  public function resetRanges()
+  {
+    $tableName = (new TokenRange())->getTableName();
+    $conn = TokenRange::conn();
+    $conn->query(
+      "UPDATE `" . $tableName . "` SET firstKey='', lastKey='', processing=0, hostname=NULL, processed=0, failed=0, " .
+      "processingTime=0, totalItems=0, processedItems=0, errorCount=0, error=NULL"
+    );
   }
 
   public function refreshKeysForRange(TokenRange $range)
@@ -122,13 +138,29 @@ class RangeManager
       $range->firstKey = key($firstItem);
     }
 
-    $otherRange = TokenRange::loadWhere(['startToken' => $range->endToken]);
-    if($otherRange)
+    $foundLastKey = false;
+    $otherRangeStart = $range->endToken;
+    while(! $foundLastKey)
     {
-      $lastItem = $cf->getTokens($otherRange->startToken, $otherRange->endToken, 1);
-      if($lastItem)
+      $otherRange = TokenRange::loadWhere(['startToken' => $otherRangeStart]);
+      if($otherRange)
       {
-        $range->lastKey = key($lastItem);
+        $lastItem = $cf->getTokens($otherRange->startToken, $otherRange->endToken, 1);
+        if($lastItem)
+        {
+          $lastKey = key($lastItem);
+          if($lastKey)
+          {
+            $range->lastKey = $lastKey;
+            $foundLastKey = true;
+          }
+        }
+        $otherRangeStart = $otherRange->endToken;
+      }
+      else
+      {
+        echo "Error getting next token range (looking for range starting with token " . $otherRangeStart . ")\n";
+        die;
       }
     }
 
@@ -157,8 +189,7 @@ class RangeManager
       $res = $db->query(
         ParseQuery::parse(
           $db,
-          "UPDATE token_ranges SET processing=1, hostname=%s WHERE processing=0 AND processed=0 " .
-          "AND firstKey<>'' AND firstKey IS NOT NULL LIMIT 1",
+          "UPDATE token_ranges SET processing=1, hostname=%s WHERE processing=0 AND processed=0 LIMIT 1",
           $this->_hostname
         )
       );
@@ -185,7 +216,21 @@ class RangeManager
       }
 
       $this->refreshKeysForRange($range);
-      $this->processRange($range);
+      if($range->firstKey != "")
+      {
+        $this->processRange($range);
+      }
+      else
+      {
+        $range->processing     = 0;
+        $range->processed      = 1;
+        $range->processingTime = 0;
+        $range->totalItems     = 0;
+        $range->processedItems = 0;
+        $range->errorCount     = 0;
+
+        $range->saveChanges();
+      }
     }
   }
 
@@ -301,8 +346,13 @@ class RangeManager
     catch(\Exception $e)
     {
       $range->failed = 1;
-      $range->error  = $e->getMessage();
-      Log::error('Error processing range: ' . $e->getMessage());
+      $msg = $e->getMessage();
+      if($msg == "")
+      {
+        $msg = 'Exception code ' . $e->getCode();
+      }
+      $range->error  = $msg;
+      Log::error('Error processing range: ' . $msg . "\n\nBacktrace:\n" . $e->getTraceAsString());
     }
 
     $range->processing     = 0;
