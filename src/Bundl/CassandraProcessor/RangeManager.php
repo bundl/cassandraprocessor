@@ -38,7 +38,7 @@ class RangeManager
     $this->_columnFamily         = $columnFamily;
     $this->_cf                   = null;
     $this->_processor            = $processor;
-    $this->batchSize             = 200;
+    $this->batchSize             = 50;
     $this->reportInterval        = 10;
     $this->_scriptProgress       = new ScriptProgress();
     $this->_hostname             = $hostname == "" ? gethostname() : $hostname;
@@ -69,7 +69,7 @@ class RangeManager
 
   public function resetCounters()
   {
-    $this->_startTime      = time();
+    $this->_startTime      = microtime(true);
     $this->_totalItems     = 0;
     $this->_processedItems = 0;
     $this->_errors         = 0;
@@ -262,7 +262,7 @@ class RangeManager
     $totalItems     = 0;
     $processedItems = 0;
     $errors         = 0;
-    $lastReportTime = $rangeStartTime = time();
+    $lastReportTime = $rangeStartTime = microtime(true);
     try
     {
       $cf   = $this->_getCF();
@@ -373,7 +373,7 @@ class RangeManager
 
     $range->processing     = 0;
     $range->processed      = 1;
-    $range->processingTime = time() - $rangeStartTime;
+    $range->processingTime = microtime(true) - $rangeStartTime;
     $range->totalItems     = $totalItems;
     $range->processedItems = $processedItems;
     $range->errorCount     = $errors;
@@ -388,7 +388,7 @@ class RangeManager
     static $lastRangeTotal = 0;
     static $lastReportTime = 0;
 
-    $now = time();
+    $now = microtime(true);
 
     $batchTotal = $rangeTotal - $lastRangeTotal;
     if($lastReportTime == 0)
@@ -485,6 +485,7 @@ class RangeManager
 
   private function _secsToTime($secs)
   {
+    $secs = round($secs);
     $hours = floor($secs / 3600);
     $secs -= $hours * 3600;
     $mins = floor($secs / 60);
