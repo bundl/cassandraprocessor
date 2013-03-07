@@ -18,10 +18,12 @@ class StatsReporter
   public $totalItems;
   public $processedItems;
   public $errors;
+  public $displayPrettyReport;
 
   public function __construct($instanceName = "")
   {
     $this->_instanceName = $instanceName;
+    $this->displayPrettyReport = true;
     $this->resetCounters();
   }
 
@@ -105,8 +107,11 @@ class StatsReporter
       $lastKey
     );
 
-    Shell::clear();
-    echo $prettyReport;
+    if($this->displayPrettyReport)
+    {
+      Shell::clear();
+      echo $prettyReport;
+    }
 
     // Store the pretty report in a file
     $logsDir = realpath(dirname(WEB_ROOT)) . DS . 'logs';

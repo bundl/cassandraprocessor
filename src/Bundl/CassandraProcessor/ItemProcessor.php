@@ -5,48 +5,53 @@
 
 namespace Bundl\CassandraProcessor;
 
-interface ItemProcessor
+abstract class ItemProcessor
 {
+  /**
+   * @var \Cubex\KvStore\Cassandra\ColumnFamily
+   */
+  public $sourceColumnFamily;
+
   /**
    * @return bool
    */
-  public function supportsBatchProcessing();
+  public abstract function supportsBatchProcessing();
 
   /**
    * @param array $items
    * @return int The number of items that were processed excluding any that were skipped
    *
-   * @throws ItemException
+   * @throws ItemException|\Exception
    */
-  public function processBatch($items);
+  public abstract function processBatch($items);
 
   /**
    * @param string $key
    * @param array  $itemData
    * @return bool true if the item was processed, false if it was skipped
    *
-   * @throws ItemException
+   * @throws ItemException|\Exception
    */
-  public function processItem($key, $itemData);
+  public abstract function processItem($key, $itemData);
 
   /**
    * List of columns required from the Cassandra items. null = all columns, array() = none (just keys)
    *
    * @return null|array
    */
-  public function requiredColumns();
+  public abstract function requiredColumns();
 
   /**
    * Return true to stop on all errors
    *
    * @return bool
    */
-  public function stopOnErrors();
+  public abstract function stopOnErrors();
 
   /**
    * Return true to save progress after each batch
    *
    * @return bool
    */
-  public function shouldSaveProgress();
+  public abstract function shouldSaveProgress();
 }

@@ -5,15 +5,22 @@
 
 namespace Bundl\CassandraProcessor;
 
-abstract class BatchProcessor implements ItemProcessor
+abstract class BatchProcessor extends ItemProcessor
 {
   public function supportsBatchProcessing()
   {
     return true;
   }
 
+  /**
+   * @param string $key
+   * @param array  $itemData
+   *
+   * @return bool
+   * @throws \Exception
+   */
   public function processItem($key, $itemData)
   {
-    throw new Exception('Only supports batch processing');
+    throw new \Exception('Only supports batch processing');
   }
 }

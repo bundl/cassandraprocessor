@@ -32,7 +32,7 @@ class RangeManager
 
   public function __construct(
     $cassandraServiceName, $columnFamily, ItemProcessor $processor,
-    $instanceName = ""
+    $instanceName = "", $displayReport = true
   )
   {
     $this->_cassandraServiceName = $cassandraServiceName;
@@ -48,10 +48,13 @@ class RangeManager
       $this->_hostname .= "-" . $this->_instanceName;
     }
 
+    $this->_processor->sourceColumnFamily = $this->_getCF();
+
     // Work out the max token for this CF
     $this->_calcMinMaxTokens();
 
     $this->_statsReporter = new StatsReporter($this->_instanceName);
+    $this->_statsReporter->displayPrettyReport = $displayReport;
   }
 
   private function _calcMinMaxTokens()

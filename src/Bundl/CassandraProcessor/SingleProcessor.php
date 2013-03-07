@@ -5,7 +5,7 @@
 
 namespace Bundl\CassandraProcessor;
 
-abstract class SingleProcessor implements ItemProcessor
+abstract class SingleProcessor extends ItemProcessor
 {
   public function supportsBatchProcessing()
   {
