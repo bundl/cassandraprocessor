@@ -159,47 +159,15 @@ class RangeManager
   {
     $cf = $this->_getCF();
 
-    $firstItem = $cf->getTokens($range->startToken, $range->endToken, 1);
+    $firstItem = $cf->getTokens($range->startToken, $range->startToken, 1);
     if($firstItem)
     {
       $range->firstKey = key($firstItem);
     }
-
-    $foundLastKey    = false;
-    $otherRangeStart = $range->endToken;
-    while(!$foundLastKey)
+    $lastItem = $cf->getTokens($range->endToken, $range->endToken, 1);
+    if($lastItem)
     {
-      $otherRange = TokenRange::loadWhere(['startToken' => $otherRangeStart]);
-      if($otherRange)
-      {
-        $lastItem = $cf->getTokens(
-          $otherRange->startToken,
-          $otherRange->endToken,
-          1
-        );
-        if($lastItem)
-        {
-          $lastKey = key($lastItem);
-          if($lastKey || ($otherRange->endToken == $this->_maxToken))
-          {
-            $range->lastKey = $lastKey;
-            $foundLastKey   = true;
-          }
-        }
-        $otherRangeStart = $otherRange->endToken;
-      }
-      else if(($range->endToken == $this->_maxToken) || ($otherRangeStart == $this->_maxToken))
-      {
-        $range->lastKey = "";
-        $foundLastKey   = true;
-      }
-      else
-      {
-        echo "Error getting next token range (looking for range starting with token " . $otherRangeStart . ")\n";
-        echo "\nThis range:\n";
-        var_dump_json($range);
-        die;
-      }
+      $range->lastKey = key($lastItem);
     }
 
     $range->saveChanges();
