@@ -155,6 +155,7 @@ class RangeManager
     if($firstItem)
     {
       $range->firstKey = key($firstItem);
+      $range->lastKey = 'empty:' . $range->endToken;
 
       $lastItem = $cf->getTokens($range->endToken, $range->endToken, 1);
       if($lastItem)
@@ -227,7 +228,11 @@ class RangeManager
         }
       }
 
-      if($range->firstKey != "")
+      if(
+        ($range->firstKey != "") && ($range->lastKey != "") &&
+        (! starts_with($range->lastKey, 'empty')) &&
+        ($range->firstKey != $range->lastKey)
+      )
       {
         $this->processRange($range);
       }
