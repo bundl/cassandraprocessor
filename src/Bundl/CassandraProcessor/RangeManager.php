@@ -22,16 +22,13 @@ class RangeManager
   private $_minToken;
   private $_maxToken;
 
-  private $_startTime;
-  private $_totalItems;
-  private $_processedItems;
-  private $_errors;
   private $_scriptProgress;
   private $_instanceName;
   private $_hostname;
 
+  private $_statsReporter;
+
   public $batchSize;
-  public $reportInterval;
 
   public function __construct(
     $cassandraServiceName, $columnFamily, ItemProcessor $processor,
@@ -43,7 +40,6 @@ class RangeManager
     $this->_cf                   = null;
     $this->_processor            = $processor;
     $this->batchSize             = 50;
-    $this->reportInterval        = 10;
     $this->_scriptProgress       = new ScriptProgress();
     $this->_instanceName         = $instanceName;
     $this->_hostname             = gethostname();
@@ -55,7 +51,7 @@ class RangeManager
     // Work out the max token for this CF
     $this->_calcMinMaxTokens();
 
-    $this->resetCounters();
+    $this->_statsReporter = new StatsReporter($this->_instanceName);
   }
 
   private function _calcMinMaxTokens()
@@ -76,13 +72,6 @@ class RangeManager
     }
   }
 
-  public function resetCounters()
-  {
-    $this->_startTime      = microtime(true);
-    $this->_totalItems     = 0;
-    $this->_processedItems = 0;
-    $this->_errors         = 0;
-  }
 
   private function _getCF()
   {
@@ -163,14 +152,14 @@ class RangeManager
     if($firstItem)
     {
       $range->firstKey = key($firstItem);
-    }
-    $lastItem = $cf->getTokens($range->endToken, $range->endToken, 1);
-    if($lastItem)
-    {
-      $range->lastKey = key($lastItem);
-    }
 
-    $range->saveChanges();
+      $lastItem = $cf->getTokens($range->endToken, $range->endToken, 1);
+      if($lastItem)
+      {
+        $range->lastKey = key($lastItem);
+      }
+      $range->saveChanges();
+    }
   }
 
 
@@ -215,7 +204,7 @@ class RangeManager
 
   public function processAll()
   {
-    $this->resetCounters();
+    $this->_statsReporter->resetCounters();
     while(true)
     {
       $range = $this->claimNextFreeRange();
@@ -225,7 +214,16 @@ class RangeManager
         break;
       }
 
-      $this->refreshKeysForRange($range);
+      // Try a few times to refresh the keys if it fails
+      for($i = 0; $i < 3; $i++)
+      {
+        $this->refreshKeysForRange($range);
+        if(($range->firstKey != "") && ($range->lastKey != ""))
+        {
+          break;
+        }
+      }
+
       if($range->firstKey != "")
       {
         $this->processRange($range);
@@ -233,11 +231,12 @@ class RangeManager
       else
       {
         $range->processing     = 0;
-        $range->processed      = 1;
+        $range->processed      = 0;
         $range->processingTime = 0;
         $range->totalItems     = 0;
         $range->processedItems = 0;
         $range->errorCount     = 0;
+        $range->hostname       = "";
 
         $range->saveChanges();
       }
@@ -254,7 +253,7 @@ class RangeManager
     $totalItems     = 0;
     $processedItems = 0;
     $errors         = 0;
-    $lastReportTime = $rangeStartTime = microtime(true);
+    $rangeStartTime = microtime(true);
     try
     {
       $cf   = $this->_getCF();
@@ -285,14 +284,14 @@ class RangeManager
           {
             $batchProcessed = $this->_processor->processBatch($items);
             $processedItems += $batchProcessed;
-            $this->_processedItems += $batchProcessed;
             $totalItems += count($items);
-            $this->_totalItems += count($items);
+            $this->_statsReporter->processedItems += $batchProcessed;
+            $this->_statsReporter->totalItems += count($items);
           }
           catch(BatchException $e)
           {
             $errors += $e->getErrorCount();
-            $this->_errors += $e->getErrorCount();
+            $this->_statsReporter->errors += $e->getErrorCount();
             $msg = $e->getMessage();
             if($msg != "")
             {
@@ -315,13 +314,13 @@ class RangeManager
               if($this->_processor->processItem($key, $itemData))
               {
                 $processedItems++;
-                $this->_processedItems++;
+                $this->_statsReporter->processedItems++;
               }
             }
             catch(ItemException $e)
             {
               $errors++;
-              $this->_errors++;
+              $this->_statsReporter->errors++;
               Log::error(
                 'Error processing item ' . $key . ' : ' . $e->getMessage()
               );
@@ -331,7 +330,7 @@ class RangeManager
               }
             }
             $totalItems++;
-            $this->_totalItems++;
+            $this->_statsReporter->totalItems++;
           }
         }
 
@@ -347,7 +346,7 @@ class RangeManager
           $finished = true;
         }
 
-        $this->displayReport(
+        $this->_statsReporter->displayReport(
           $finished,
           $range,
           $totalItems,
@@ -384,154 +383,6 @@ class RangeManager
     $range->errorCount     = $errors;
 
     $range->saveChanges();
-  }
-
-  public function displayReport(
-    $forceLog, TokenRange $currentRange, $rangeTotal, $rangeProcessed,
-    $rangeErrors, $rangeStartTime, $lastKey
-  )
-  {
-    static $lastRangeTotal = 0;
-    static $lastReportTime = 0;
-
-    $now = microtime(true);
-
-    $batchTotal = $rangeTotal - $lastRangeTotal;
-    if($lastReportTime == 0)
-    {
-      $lastReportTime = $rangeStartTime;
-    }
-    $batchDuration = $now - $lastReportTime;
-
-    $totalDuration = $now - $this->_startTime;
-    if($totalDuration > 0)
-    {
-      $averageRate = round($this->_totalItems / $totalDuration);
-    }
-    else
-    {
-      $averageRate = 0;
-    }
-    if($batchDuration > 0)
-    {
-      $currentRate = round($batchTotal / $batchDuration);
-    }
-    else
-    {
-      $currentRate = 0;
-    }
-
-    if($forceLog || (($now - $lastReportTime) >= $this->reportInterval))
-    {
-      $lastReportTime = $now;
-      // Log the stats
-      Log::info(
-        "CURRENT RANGE: Run time " . $this->_secsToTime(
-          $now - $rangeStartTime
-        ) .
-        ", Processed " . $rangeProcessed . " of " . $rangeTotal . " items, " . $rangeErrors . " errors"
-      );
-      Log::info(
-        "OVERALL: Run time " . $this->_secsToTime($totalDuration) .
-        ", Processed " . $this->_processedItems . " of " . $this->_totalItems . " items, " .
-        $this->_errors . " errors"
-      );
-      Log::info(
-        "Current rate: " . $currentRate . " items/second, Average rate: " . $averageRate . " items/second"
-      );
-      Log::info("Last key: " . $lastKey);
-    }
-
-    // Display a nice report...
-    Shell::clear();
-    ob_start();
-    $this->_displayReportHeader('Current Range', false);
-    echo Shell::colourText(
-      " (" . $currentRange->id() . ")",
-      Shell::COLOUR_FOREGROUND_LIGHT_GREY
-    ) . "\n";
-    $this->_displayReportLine('Start token', $currentRange->startToken);
-    $this->_displayReportLine('End token', $currentRange->endToken);
-    $this->_displayReportLine('First key', $currentRange->firstKey);
-    $this->_displayReportLine('Last key', $currentRange->lastKey);
-    $this->_displayReportHeader('Range statistics');
-    $this->_displayReportLine(
-      'Processing time',
-      $this->_secsToTime($now - $rangeStartTime)
-    );
-    $this->_displayReportLine('Total items', $rangeTotal);
-    $this->_displayReportLine('Processed items', $rangeProcessed);
-    $this->_displayReportLine(
-      'Skipped',
-      ($rangeTotal - ($rangeProcessed + $rangeErrors))
-    );
-    $this->_displayReportLine('Errors', $rangeErrors);
-    $this->_displayReportLine(
-      'Processing rate', $currentRate . ' items/second'
-    );
-    $this->_displayReportHeader('Total');
-    $this->_displayReportLine(
-      'Processing time',
-      $this->_secsToTime($totalDuration)
-    );
-    $this->_displayReportLine('Total items', $this->_totalItems);
-    $this->_displayReportLine('Processed items', $this->_processedItems);
-    $this->_displayReportLine(
-      'Skipped',
-      ($this->_totalItems - ($this->_processedItems + $this->_errors))
-    );
-    $this->_displayReportLine('Errors', $this->_errors);
-    $this->_displayReportLine(
-      'Processing rate', $averageRate . ' items/second'
-    );
-    echo "\n";
-    $this->_displayReportLine('Last key processed', $lastKey);
-
-    $report = ob_get_flush();
-    $reportFile = realpath(dirname(WEB_ROOT)) . DS . 'logs/';
-    if($this->_instanceName != "")
-    {
-      $reportFile .= $this->_instanceName . '/';
-    }
-    $reportFile .= 'report.txt';
-    file_put_contents($reportFile, $report);
-  }
-
-
-  private function _displayReportHeader($text, $newLine = true)
-  {
-    echo "\n ";
-    echo Shell::colourText($text, Shell::COLOUR_FOREGROUND_LIGHT_RED);
-    if($newLine)
-    {
-      echo "\n";
-    }
-  }
-
-  private function _displayReportLine($label, $value)
-  {
-    $labelSize   = 18;
-    $labelColour = Shell::COLOUR_FOREGROUND_LIGHT_GREEN;
-    $colonColour = Shell::COLOUR_FOREGROUND_YELLOW;
-    $valueColour = Shell::COLOUR_FOREGROUND_WHITE;
-
-    $labelTxt = $label . str_repeat(" ", $labelSize - strlen($label));
-    echo "  " . Shell::colourText($labelTxt, $labelColour);
-    echo Shell::colourText(" : ", $colonColour);
-    echo Shell::colourText($value, $valueColour);
-    echo "\n";
-  }
-
-
-  private function _secsToTime($secs)
-  {
-    $secs  = round($secs);
-    $hours = floor($secs / 3600);
-    $secs -= $hours * 3600;
-    $mins = floor($secs / 60);
-    $secs -= $mins * 60;
-
-    return sprintf("%d:%02d:%02d", $hours, $mins, $secs);
   }
 }
 
