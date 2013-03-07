@@ -76,11 +76,17 @@ class RangeManager
   }
 
 
-  private function _getCF()
+  private function _getCF($refresh = false)
   {
-    if(!$this->_cf)
+    if($refresh || (! $this->_cf))
     {
       $cass      = Cassandra::getAccessor($this->_cassandraServiceName);
+      if($refresh)
+      {
+        $cass->disconnect();
+        $cass->connect();
+      }
+
       $this->_cf = $cass->cf($this->_columnFamily, false);
     }
     return $this->_cf;
@@ -149,7 +155,7 @@ class RangeManager
 
   public function refreshKeysForRange(TokenRange $range)
   {
-    $cf = $this->_getCF();
+    $cf = $this->_getCF(true);
 
     $firstItem = $cf->getTokens($range->startToken, $range->startToken, 1);
     if($firstItem)
@@ -162,6 +168,7 @@ class RangeManager
       {
         $range->lastKey = key($lastItem);
       }
+
       $range->saveChanges();
     }
   }
@@ -219,14 +226,17 @@ class RangeManager
       }
 
       // Try a few times to refresh the keys if it fails
-      for($i = 0; $i < 3; $i++)
+      /*for($i = 0; $i < 3; $i++)
       {
         $this->refreshKeysForRange($range);
         if(($range->firstKey != "") && ($range->lastKey != ""))
         {
           break;
         }
-      }
+      }*/
+
+      $this->refreshKeysForRange($range);
+
 
       if(
         ($range->firstKey != "") && ($range->lastKey != "") &&
