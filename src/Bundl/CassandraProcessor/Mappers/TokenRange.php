@@ -45,9 +45,12 @@ class TokenRange extends RecordMapper
   public $processedItems = 0;
   /**
    * @datatype int
-   *
    */
   public $errorCount = 0;
+  /**
+   * @datatype int
+   */
+  public $randomKey = 0;
   public $error;
   public $hostname;
 
