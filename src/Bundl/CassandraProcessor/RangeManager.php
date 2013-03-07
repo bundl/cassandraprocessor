@@ -249,6 +249,24 @@ class RangeManager
       }
       else
       {
+        ob_start();
+        echo "Error getting keys for range " .$range->id() . "\n\n";
+        var_dump($range);
+        echo "\n\n";
+        var_dump_json($range);
+        echo "\n";
+        $msg = ob_get_clean();
+
+        Log::error($msg);
+
+        $range->failed = 1;
+        $range->processing = 0;
+        $range->processed = 1;
+        $range->error = 'Error getting keys. See log file.';
+        $range->saveChanges();
+
+
+        /*
         $range->processing     = 0;
         $range->processed      = 0;
         $range->processingTime = 0;
@@ -258,6 +276,7 @@ class RangeManager
         $range->hostname       = "";
 
         $range->saveChanges();
+        */
       }
     }
   }
