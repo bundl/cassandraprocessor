@@ -197,7 +197,7 @@ class RangeManager
         ParseQuery::parse(
           $db,
           "UPDATE token_ranges SET processing=1, hostname=%s " .
-          "WHERE processing=0 AND processed=0 ORDER BY RAND() LIMIT 1",
+          "WHERE processing=0 AND processed=0 ORDER BY randomKey LIMIT 1",
           $this->_hostname
         )
       );
