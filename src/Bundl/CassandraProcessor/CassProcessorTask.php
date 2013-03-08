@@ -5,6 +5,7 @@
 
 namespace Bundl\CassandraProcessor;
 
+use Bundl\CassandraProcessor\Mappers\TokenRange;
 use Bundl\Debugger\DebuggerBundle;
 use Cubex\Cli\CliLogger;
 use Cubex\Cli\CliTask;
@@ -51,6 +52,8 @@ abstract class CassProcessorTask implements CliTask
 
   public function init()
   {
+    TokenRange::setTableName($this->_getTokenRangesTableName());
+
     if($this->_enableDebug)
     {
       $debugger = new DebuggerBundle();
@@ -79,6 +82,16 @@ abstract class CassProcessorTask implements CliTask
     {
       $rangeManager->processAll();
     }
+  }
+
+  /**
+   * Return the name of the MySQL table used to store token ranges
+   *
+   * @return string
+   */
+  protected function _getTokenRangesTableName()
+  {
+    return 'token_ranges';
   }
 
   /**

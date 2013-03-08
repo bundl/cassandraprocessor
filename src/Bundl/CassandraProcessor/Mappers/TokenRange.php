@@ -57,8 +57,15 @@ class TokenRange extends RecordMapper
   protected $_autoTimestamp = false;
   protected $_schemaType = self::SCHEMA_CAMELCASE;
 
+  private static $_tokenRangesTableName = 'token_ranges';
+
+  public static function setTableName($tableName)
+  {
+    self::$_tokenRangesTableName = $tableName;
+  }
+
   public function getTableName()
   {
-    return 'token_ranges';
+    return self::$_tokenRangesTableName;
   }
 }

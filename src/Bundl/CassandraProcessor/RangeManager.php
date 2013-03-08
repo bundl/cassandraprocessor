@@ -99,10 +99,11 @@ class RangeManager
     $lastToken  = $this->_maxToken;
 
     // Delete all ranges from the DB
+    $db = TokenRange::conn();
     $tableName = (new TokenRange())->getTableName();
-    TokenRange::conn()->query('DELETE FROM ' . $tableName);
-    TokenRange::conn()->query(
-      'ALTER TABLE ' . $tableName . ' AUTO_INCREMENT=0'
+    $db->query(ParseQuery::parse($db, 'DELETE FROM %T', $tableName));
+    $db->query(
+      ParseQuery::parse($db, 'ALTER TABLE %T AUTO_INCREMENT=0', $tableName)
     );
 
     $interval = bcdiv(bcsub($lastToken, $firstToken), $numRanges);
@@ -158,6 +159,9 @@ class RangeManager
   {
     $cf = $this->_getCF(true);
 
+    $range->firstKey = '';
+    $range->lastKey = '';
+
     $firstItem = $cf->getTokens($range->startToken, $range->startToken, 1);
     if($firstItem)
     {
@@ -197,9 +201,9 @@ class RangeManager
       $res = $db->query(
         ParseQuery::parse(
           $db,
-          "UPDATE token_ranges SET processing=1, hostname=%s " .
+          "UPDATE %T SET processing=1, hostname=%s " .
           "WHERE processing=0 AND processed=0 ORDER BY randomKey LIMIT 1",
-          $this->_hostname
+          (new TokenRange())->getTableName(), $this->_hostname
         )
       );
 
@@ -227,21 +231,18 @@ class RangeManager
       }
 
       // Try a few times to refresh the keys if it fails
-      /*for($i = 0; $i < 3; $i++)
+      for($i = 0; $i < 3; $i++)
       {
         $this->refreshKeysForRange($range);
         if(($range->firstKey != "") && ($range->lastKey != ""))
         {
           break;
         }
-      }*/
-
-      $this->refreshKeysForRange($range);
-
+      }
 
       if(
         ($range->firstKey != "") && ($range->lastKey != "") &&
-        (! starts_with($range->lastKey, 'empty')) &&
+        (! starts_with($range->lastKey, 'empty:')) &&
         ($range->firstKey != $range->lastKey)
       )
       {
@@ -249,6 +250,8 @@ class RangeManager
       }
       else
       {
+        /*
+        // Log and fail the range if there was an error getting the keys
         ob_start();
         echo "Error getting keys for range " .$range->id() . "\n\n";
         var_dump($range);
@@ -264,19 +267,20 @@ class RangeManager
         $range->processed = 1;
         $range->error = 'Error getting keys. See log file.';
         $range->saveChanges();
+        */
 
+        // Re-queue the range if there was an error getting the keys
+        Log::error('Error getting the keys for range ' . $range->id());
 
-        /*
         $range->processing     = 0;
         $range->processed      = 0;
         $range->processingTime = 0;
         $range->totalItems     = 0;
         $range->processedItems = 0;
         $range->errorCount     = 0;
+        $range->randomKey      = rand(0, 10000);
         $range->hostname       = "";
-
         $range->saveChanges();
-        */
       }
     }
   }
