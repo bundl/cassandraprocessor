@@ -12,7 +12,7 @@ abstract class SingleProcessor extends ItemProcessor
     return false;
   }
 
-  public function processBatch($items)
+  public function processBatch(array $items)
   {
     throw new \Exception('Batch processing not supported');
   }
