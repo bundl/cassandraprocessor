@@ -162,18 +162,43 @@ class RangeManager
     $range->firstKey = '';
     $range->lastKey = '';
 
-    $firstItem = $cf->getTokens($range->startToken, $range->startToken, 1);
-    if($firstItem)
-    {
-      $range->firstKey = key($firstItem);
-      $range->lastKey = 'empty:' . $range->endToken;
+    $firstKey = '';
+    $lastKey = '';
+    $gotFirst = false;
+    $gotLast = false;
 
+    if($range->startToken == $this->_minToken)
+    {
+      $gotFirst = true;
+    }
+    else
+    {
+      $firstItem = $cf->getTokens($range->startToken, $range->startToken, 1);
+      if($firstItem)
+      {
+        $firstKey = key($firstItem);
+        $gotFirst = true;
+      }
+    }
+
+    if($range->endToken == $this->_maxToken)
+    {
+      $gotLast = true;
+    }
+    else
+    {
       $lastItem = $cf->getTokens($range->endToken, $range->endToken, 1);
       if($lastItem)
       {
-        $range->lastKey = key($lastItem);
+        $lastKey = key($lastItem);
+        $gotLast = true;
       }
+    }
 
+    if($gotFirst && $gotLast)
+    {
+      $range->firstKey = $firstKey;
+      $range->lastKey = $lastKey;
       $range->saveChanges();
     }
   }
@@ -230,18 +255,11 @@ class RangeManager
         break;
       }
 
-      // Try a few times to refresh the keys if it fails
-      for($i = 0; $i < 3; $i++)
-      {
-        $this->refreshKeysForRange($range);
-        if(($range->firstKey != "") && ($range->lastKey != ""))
-        {
-          break;
-        }
-      }
+      // Refresh the keys for this range
+      $this->refreshKeysForRange($range);
 
       if(
-        ($range->firstKey != "") && ($range->lastKey != "") &&
+        (($range->firstKey != "") || ($range->lastKey != "")) &&
         (! starts_with($range->lastKey, 'empty:')) &&
         ($range->firstKey != $range->lastKey)
       )

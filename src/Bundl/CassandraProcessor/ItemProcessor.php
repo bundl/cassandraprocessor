@@ -23,7 +23,7 @@ abstract class ItemProcessor
    *
    * @throws ItemException|\Exception
    */
-  public abstract function processBatch($items);
+  public abstract function processBatch(array $items);
 
   /**
    * @param string $key
