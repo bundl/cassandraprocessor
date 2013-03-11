@@ -167,18 +167,11 @@ class RangeManager
     $gotFirst = false;
     $gotLast = false;
 
-    if($range->startToken == $this->_minToken)
+    $firstItem = $cf->getTokens($range->startToken, $range->startToken, 1);
+    if($firstItem)
     {
+      $firstKey = key($firstItem);
       $gotFirst = true;
-    }
-    else
-    {
-      $firstItem = $cf->getTokens($range->startToken, $range->startToken, 1);
-      if($firstItem)
-      {
-        $firstKey = key($firstItem);
-        $gotFirst = true;
-      }
     }
 
     if($range->endToken == $this->_maxToken)
