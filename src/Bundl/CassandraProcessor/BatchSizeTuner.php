@@ -17,7 +17,7 @@ class BatchSizeTuner
   private $_fixedSize;
 
   private $_minBatchSize = 25;
-  private $_maxBatchSize = 500;
+  private $_maxBatchSize = 250;
   private $_minBatchTime = 5;
   private $_maxBatchTime = 20;
 
@@ -35,23 +35,28 @@ class BatchSizeTuner
     $this->reset();
   }
 
-  public function setFixedBatchSize($batchSize)
+  public function setBatchSizeLimitsArr($sizeArr)
   {
-    if($batchSize != $this->_fixedSize)
-    {
-      if($batchSize)
-      {
-        $this->_currentBatchSize = $batchSize;
-        $this->_fixedSize = true;
-        Log::info('BatchSizeTuner: Batch size fixed at ' . $batchSize);
-      }
-      else
-      {
-        $this->_fixedSize = false;
-      }
+    $this->setBatchSizeLimits($sizeArr['min'], $sizeArr['max']);
+  }
 
-      $this->reset();
+  public function setBatchSizeLimits($minSize, $maxSize)
+  {
+    $this->_minBatchSize = $minSize;
+    $this->_maxBatchSize = $maxSize;
+
+    $this->_fixedSize = $minSize == $maxSize;
+    if($this->_fixedSize)
+    {
+      $this->_currentBatchSize = $minSize;
+      Log::info('BatchSizeTuner: Batch size fixed at ' . $minSize);
     }
+  }
+
+  public function setBatchTimeLimits($minTime, $maxTime)
+  {
+    $this->_minBatchTime = $minTime;
+    $this->_maxBatchTime = $maxTime;
   }
 
   public function reset()

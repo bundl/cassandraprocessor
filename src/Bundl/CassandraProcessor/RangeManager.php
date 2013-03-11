@@ -8,6 +8,7 @@ namespace Bundl\CassandraProcessor;
 use Bundl\CassandraProcessor\Mappers\TokenRange;
 use Cubex\Cli\Shell;
 use Cubex\Facade\Cassandra;
+use Cubex\KvStore\Cassandra\ColumnFamily;
 use Cubex\Log\Log;
 use Cubex\Mapper\Database\RecordCollection;
 use Cubex\Mapper\Database\SearchObject;
@@ -56,7 +57,7 @@ class RangeManager
     $this->_statsReporter->displayPrettyReport = $displayReport;
 
     $this->_batchSizeTuner        = new BatchSizeTuner();
-    $this->_batchSizeTuner->setFixedBatchSize($this->_processor->getBatchSize());
+    $this->_batchSizeTuner->setBatchSizeLimitsArr($this->_processor->getBatchSize());
   }
 
   private function _calcMinMaxTokens()
@@ -86,7 +87,26 @@ class RangeManager
       if($refresh)
       {
         $cass->disconnect();
-        $cass->connect();
+
+        $tries = 0;
+        while(true)
+        {
+          try
+          {
+            $cass->connect();
+            break;
+          }
+          catch(\Exception $e)
+          {
+            $tries++;
+            if($tries >= 5)
+            {
+              throw $e;
+            }
+            Log::info('Connect failed. Retrying...');
+            usleep($tries * 10000);
+          }
+        }
       }
 
       $this->_cf = $cass->cf($this->_columnFamily, false);
@@ -169,7 +189,7 @@ class RangeManager
     $gotFirst = false;
     $gotLast = false;
 
-    $firstItem = $cf->getTokens($range->startToken, $range->startToken, 1);
+    $firstItem = $this->_getTokensWithRetry($cf, $range->startToken, $range->startToken, 1);
     if($firstItem)
     {
       $firstKey = key($firstItem);
@@ -182,7 +202,7 @@ class RangeManager
     }
     else
     {
-      $lastItem = $cf->getTokens($range->endToken, $range->endToken, 1);
+      $lastItem = $this->_getTokensWithRetry($cf, $range->endToken, $range->endToken, 1);
       if($lastItem)
       {
         $lastKey = key($lastItem);
@@ -196,6 +216,63 @@ class RangeManager
       $range->lastKey = $lastKey;
       $range->saveChanges();
     }
+  }
+
+
+  private function _getTokensWithRetry(ColumnFamily &$cf, $startToken, $endToken, $count)
+  {
+    $tries = 0;
+    $res = null;
+    while(true)
+    {
+      try
+      {
+        $res = $cf->getTokens($startToken, $endToken, $count);
+        break;
+      }
+      catch(\Exception $e)
+      {
+        $tries++;
+        if($tries >= 5)
+        {
+          throw $e;
+        }
+      }
+
+      Log::info('getTokens failed. Retrying...');
+      usleep($tries * 100000);
+      $cf = $this->_getCF(true);
+    }
+
+    return $res;
+  }
+
+  private function _getKeysWithRetry(ColumnFamily &$cf, $lastKey, $rangeLastKey, $batchSize, $cols)
+  {
+    $items = null;
+    $tries = 0;
+    while(true)
+    {
+      try
+      {
+        $items = $cf->getKeys($lastKey, $rangeLastKey, $batchSize, $cols);
+        break;
+      }
+      catch(\Exception $e)
+      {
+        $tries++;
+        if($tries >= 5)
+        {
+          throw $e;
+        }
+
+        Log::info('getKeys failed. Retrying...');
+        usleep($tries * 100000);
+        $cf = $this->_getCF(true);
+      }
+    }
+
+    return $items;
   }
 
 
@@ -322,7 +399,8 @@ class RangeManager
       {
         $this->_batchSizeTuner->nextBatch();
         $batchSize = $this->_batchSizeTuner->getBatchSize();
-        $items = $cf->getKeys($lastKey, $rangeLastKey, $batchSize, $cols);
+        $items = $this->_getKeysWithRetry($cf, $lastKey, $rangeLastKey, $batchSize, $cols);
+        //$items = $cf->getKeys($lastKey, $rangeLastKey, $batchSize, $cols);
 
         if(!$items)
         {

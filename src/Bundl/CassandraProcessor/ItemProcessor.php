@@ -56,12 +56,12 @@ abstract class ItemProcessor
   public abstract function shouldSaveProgress();
 
   /**
-   * Return the size of the batches to process or return 0 to auto-tune the batch size
+   * Return the min/max size of the batches to process
    *
-   * @return int
+   * @return array An array containing 'min' and 'max' values
    */
   public function getBatchSize()
   {
-    return 0;
+    return array('min' => 50, 'max' => 250);
   }
 }
