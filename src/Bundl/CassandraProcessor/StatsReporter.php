@@ -124,28 +124,31 @@ class StatsReporter
 
 
     // Store the raw stats
-    $rawStats = implode(
-      '¬',
+    $rawStats = json_encode(
       [
-      $currentRange->hostname,
-      $currentRange->id(),
-      $currentRange->startToken,
-      $currentRange->endToken,
-      $currentRange->firstKey,
-      $currentRange->lastKey,
-      $now,
-      $rangeStartTime,
-      $rangeTotal,
-      $rangeProcessed,
-      $rangeErrors,
-      $currentRate,
-      $rangeSkipped,
-      $totalSkipped,
-      $totalDuration,
-      $averageRate,
-      $lastKey
+        'hostname' => $currentRange->hostname,
+        'rangeId' => $currentRange->id(),
+        'startToken' => $currentRange->startToken,
+        'endToken' => $currentRange->endToken,
+        'rangeFirstKey' => $currentRange->firstKey,
+        'rangeLastKey' => $currentRange->lastKey,
+        'timestamp' => $now,
+        'rangeStartTime' => $rangeStartTime,
+        'rangeTotal' => $rangeTotal,
+        'rangeProcessed' => $rangeProcessed,
+        'rangeErrors' => $rangeErrors,
+        'rangeSkipped' => $rangeSkipped,
+        'currentRate' => $currentRate,
+        'totalItems' => $this->totalItems,
+        'totalProcessed' => $this->processedItems,
+        'totalErrors' => $this->errors,
+        'totalSkipped' => $totalSkipped,
+        'totalDuration' => $totalDuration,
+        'averageRate' => $averageRate,
+        'lastKey' => $lastKey
       ]
     );
+
     $rawStatsFile = $logsDir . DS . 'stats.txt';
     file_put_contents($rawStatsFile, $rawStats);
   }
