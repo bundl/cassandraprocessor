@@ -54,4 +54,14 @@ abstract class ItemProcessor
    * @return bool
    */
   public abstract function shouldSaveProgress();
+
+  /**
+   * Return the size of the batches to process or return 0 to auto-tune the batch size
+   *
+   * @return int
+   */
+  public function getBatchSize()
+  {
+    return 0;
+  }
 }

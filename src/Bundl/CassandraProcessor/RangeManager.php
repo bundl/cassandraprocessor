@@ -28,7 +28,7 @@ class RangeManager
 
   private $_statsReporter;
 
-  public $batchSize;
+  private $_batchSizeTuner;
 
   public function __construct(
     $cassandraServiceName, $columnFamily, ItemProcessor $processor,
@@ -39,7 +39,6 @@ class RangeManager
     $this->_columnFamily         = $columnFamily;
     $this->_cf                   = null;
     $this->_processor            = $processor;
-    $this->batchSize             = 50;
     $this->_scriptProgress       = new ScriptProgress();
     $this->_instanceName         = $instanceName;
     $this->_hostname             = gethostname();
@@ -55,6 +54,9 @@ class RangeManager
 
     $this->_statsReporter = new StatsReporter($this->_instanceName);
     $this->_statsReporter->displayPrettyReport = $displayReport;
+
+    $this->_batchSizeTuner        = new BatchSizeTuner();
+    $this->_batchSizeTuner->setFixedBatchSize($this->_processor->getBatchSize());
   }
 
   private function _calcMinMaxTokens()
@@ -303,6 +305,7 @@ class RangeManager
       ) . " from '" . $range->firstKey . "' to '" . $range->lastKey . "'..."
     );
 
+    $this->_batchSizeTuner->reset();
     $totalItems     = 0;
     $processedItems = 0;
     $errors         = 0;
@@ -317,7 +320,9 @@ class RangeManager
       $finished     = false;
       while(!$finished)
       {
-        $items = $cf->getKeys($lastKey, $rangeLastKey, $this->batchSize, $cols);
+        $this->_batchSizeTuner->nextBatch();
+        $batchSize = $this->_batchSizeTuner->getBatchSize();
+        $items = $cf->getKeys($lastKey, $rangeLastKey, $batchSize, $cols);
 
         if(!$items)
         {
@@ -394,7 +399,7 @@ class RangeManager
           $this->_scriptProgress->save($range->firstKey, $lastKey);
         }
 
-        if(($lastKey == $rangeLastKey) || (count($items) < $this->batchSize))
+        if(($lastKey == $rangeLastKey) || (count($items) < $batchSize))
         {
           $finished = true;
         }
