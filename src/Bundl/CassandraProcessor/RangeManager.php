@@ -177,6 +177,25 @@ class RangeManager
     );
   }
 
+  /**
+   * For testing only: refresh the keys for all ranges
+   */
+  public function refreshKeysForAllRanges()
+  {
+    $ranges = (new RecordCollection(new TokenRange()))->loadAll();
+    $total = count($ranges);
+    $processed = 0;
+    foreach($ranges as $range)
+    {
+      $this->refreshKeysForRange($range);
+      $processed++;
+
+      Shell::clearLine();
+      echo "Processed: " . number_format($processed) . ' / ' . number_format($total);
+    }
+    echo "\n";
+  }
+
   public function refreshKeysForRange(TokenRange $range)
   {
     $cf = $this->_getCF(true);
@@ -189,25 +208,33 @@ class RangeManager
     $gotFirst = false;
     $gotLast = false;
 
+    // get the first and last keys in the CF
+    $firstItemInCF = $this->_getTokensWithRetry($cf, $this->_minToken, $this->_minToken, 1);
+    $firstKeyInCF = key($firstItemInCF);
+    $lastItemInCF = $this->_getTokensWithRetry($cf, $this->_maxToken, $this->_maxToken, 1);
+    $lastKeyInCF = key($lastItemInCF);
+
+
     $firstItem = $this->_getTokensWithRetry($cf, $range->startToken, $range->startToken, 1);
     if($firstItem)
     {
       $firstKey = key($firstItem);
+      if($firstKey == $firstKeyInCF)
+      {
+        $firstKey = "";
+      }
       $gotFirst = true;
     }
 
-    if($range->endToken == $this->_maxToken)
+    $lastItem = $this->_getTokensWithRetry($cf, $range->endToken, $range->endToken, 1);
+    if($lastItem)
     {
-      $gotLast = true;
-    }
-    else
-    {
-      $lastItem = $this->_getTokensWithRetry($cf, $range->endToken, $range->endToken, 1);
-      if($lastItem)
+      $lastKey = key($lastItem);
+      if($lastKey == $lastKeyInCF)
       {
-        $lastKey = key($lastItem);
-        $gotLast = true;
+        $lastKey = "";
       }
+      $gotLast = true;
     }
 
     if($gotFirst && $gotLast)
@@ -340,25 +367,6 @@ class RangeManager
       }
       else
       {
-        /*
-        // Log and fail the range if there was an error getting the keys
-        ob_start();
-        echo "Error getting keys for range " .$range->id() . "\n\n";
-        var_dump($range);
-        echo "\n\n";
-        var_dump_json($range);
-        echo "\n";
-        $msg = ob_get_clean();
-
-        Log::error($msg);
-
-        $range->failed = 1;
-        $range->processing = 0;
-        $range->processed = 1;
-        $range->error = 'Error getting keys. See log file.';
-        $range->saveChanges();
-        */
-
         // Re-queue the range if there was an error getting the keys
         Log::error('Error getting the keys for range ' . $range->id());
 
