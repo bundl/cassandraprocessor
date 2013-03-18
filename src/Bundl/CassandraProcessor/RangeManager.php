@@ -142,7 +142,7 @@ class RangeManager
         $range             = new TokenRange();
         $range->startToken = $prevToken;
         $range->endToken   = $tok;
-        $range->randomKey  = rand(0, 10000);
+        $range->randomKey  = rand(1, 10000);
         $range->saveChanges();
       }
 
@@ -161,6 +161,7 @@ class RangeManager
       $range             = new TokenRange();
       $range->startToken = $prevToken;
       $range->endToken   = $lastToken;
+      $range->randomKey  = rand(1, 10000);
       $range->saveChanges();
     }
 
