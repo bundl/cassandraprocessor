@@ -37,6 +37,8 @@ abstract class CassProcessorTask implements CliTask
   private $_getKeysEndToken;
   private $_getKeysCount;
 
+  private $_rangeManager = null;
+
   public function __construct($loader = null, $args = null)
   {
     $this->_displayReport = true;
@@ -107,6 +109,18 @@ abstract class CassProcessorTask implements CliTask
     }
   }
 
+  protected function _getRangeManager()
+  {
+    if($this->_rangeManager == null)
+    {
+      $this->_rangeManager = new RangeManager(
+        $this->_getCassServiceName(), $this->_getColumnFamilyName(),
+        $this->_getProcessor(), $this->_instanceName, $this->_displayReport
+      );
+    }
+    return $this->_rangeManager;
+  }
+
   public function init()
   {
     TokenRange::setTableName($this->_getTokenRangesTableName());
@@ -117,22 +131,17 @@ abstract class CassProcessorTask implements CliTask
       $debugger->init();
     }
 
-    $rangeManager = new RangeManager(
-      $this->_getCassServiceName(), $this->_getColumnFamilyName(),
-      $this->_getProcessor(), $this->_instanceName, $this->_displayReport
-    );
-
     switch($this->_runMode)
     {
       case self::RUNMODE_BUILD_RANGES:
-        $rangeManager->buildRanges($this->_rangeCount);
+        $this->_getRangeManager()->buildRanges($this->_rangeCount);
         break;
       case self::RUNMODE_RESET_RANGES:
-        $rangeManager->resetRanges();
+        $this->_getRangeManager()->resetRanges();
         break;
       case self::RUNMODE_REFRESH_KEYS:
         // For testing only: Refresh the keys in all ranges
-        $rangeManager->refreshKeysForAllRanges();
+        $this->_getRangeManager()->refreshKeysForAllRanges();
         break;
       case self::RUNMODE_COUNT_RANGE:
         $this->_countRange($this->_countStartKey, $this->_countEndKey);
@@ -149,7 +158,7 @@ abstract class CassProcessorTask implements CliTask
           $this->_getEchoLevel(), $this->_getLogLevel(), "", $this->_instanceName
         );
         $pidFile = new PidFile("", $this->_instanceName);
-        $rangeManager->processAll();
+        $this->_getRangeManager()->processAll();
         break;
     }
   }

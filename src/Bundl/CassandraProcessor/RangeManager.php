@@ -401,7 +401,7 @@ class RangeManager
       $cf   = $this->_getCF();
       $cols = $this->_processor->requiredColumns();
 
-      $lastKey      = $range->firstKey;
+      $lastKey      = $range->firstKey ? $range->firstKey : "";
       $rangeLastKey = $range->lastKey ? $range->lastKey : "";
       $finished     = false;
       while(!$finished)

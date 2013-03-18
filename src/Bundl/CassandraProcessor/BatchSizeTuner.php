@@ -51,6 +51,10 @@ class BatchSizeTuner
       $this->_currentBatchSize = $minSize;
       Log::info('BatchSizeTuner: Batch size fixed at ' . $minSize);
     }
+    else
+    {
+      Log::info('BatchSizeTuner: Batch size range set to min=' . $minSize . ', max=' . $maxSize);
+    }
   }
 
   public function setBatchTimeLimits($minTime, $maxTime)
