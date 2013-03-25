@@ -7,105 +7,121 @@ namespace Bundl\CassandraProcessor;
 
 use Bundl\CassandraProcessor\Mappers\TokenRange;
 use Bundl\Debugger\DebuggerBundle;
+use Cubex\Cli\CliArgument;
+use Cubex\Cli\CliCommand;
 use Cubex\Cli\CliLogger;
-use Cubex\Cli\CliTask;
 use Cubex\Cli\PidFile;
 use Cubex\Cli\Shell;
+use Cubex\Data\Validator\Validator;
 use Cubex\Facade\Cassandra;
-use Cubex\Foundation\Config\ConfigTrait;
 
-abstract class CassProcessorTask implements CliTask
+abstract class CassProcessorTask extends CliCommand
 {
-  use ConfigTrait;
-
-  const RUNMODE_NORMAL       = 1;
-  const RUNMODE_RESET_RANGES = 2;
-  const RUNMODE_BUILD_RANGES = 3;
-  const RUNMODE_REFRESH_KEYS = 4;
-  const RUNMODE_COUNT_RANGE  = 5;
-  const RUNMODE_GET_KEYS     = 6;
-
   protected $_instanceName = "";
   protected $_enableDebug = false;
-  protected $_displayReport;
-  protected $_runMode;
-
-  private $_rangeCount;
-  private $_countStartKey;
-  private $_countEndKey;
-  private $_getKeysStartToken;
-  private $_getKeysEndToken;
-  private $_getKeysCount;
-
+  protected $_displayReport = true;
   private $_rangeManager = null;
+  private $_logger = null;
+  private $_pidFile = null;
 
-  public function __construct($loader = null, $args = null)
+  protected function _argumentsList()
   {
-    $this->_displayReport = true;
-    $this->_runMode = self::RUNMODE_NORMAL;
+    return [
+      new CliArgument(
+        'instance',
+        'A name to give this instance of the script. Required when running ' .
+        'multiple instances of the same script on one machine.',
+        "i", CliArgument::VALUE_REQUIRED, 'name'
+      ),
+      new CliArgument('reset-ranges', 'Reset the status of all ranges'),
+      new CliArgument(
+        'build-ranges',
+        'Delete all existing ranges and rebuild with the specified number of ranges',
+        "", CliArgument::VALUE_REQUIRED, 'count', false, null,
+        Validator::VALIDATE_INT
+      ),
+      new CliArgument('debug', 'If set then include the DebuggerBundle'),
+      new CliArgument('no-report', 'Don\'t show the processing report'),
+      new CliArgument('refresh-keys', 'For testing only: Refresh the keys in all ranges'),
+      new CliArgument(
+        'count-range',
+        'Count the number of keys in a range',
+        '',
+        CliArgument::VALUE_REQUIRED,
+        'startkey,endkey'
+      ),
+      new CliArgument(
+        'get-keys',
+        'List the keys at the start and end of a token range',
+        '',
+        CliArgument::VALUE_REQUIRED,
+        'startToken,endToken,count'
+      )
+    ];
+  }
 
-    foreach($args as $arg => $value)
+  public function init()
+  {
+  }
+
+  public function execute()
+  {
+    TokenRange::setTableName($this->_getTokenRangesTableName());
+
+    // Process options
+    if($this->argumentValue('debug'))
     {
-      switch($arg)
-      {
-        case 'instance':
-          $this->_instanceName = $value;
-          break;
-        case 'resetRanges':
-          $this->_runMode = self::RUNMODE_RESET_RANGES;
-          break;
-        case 'buildRanges':
-          if((! $value) || (! is_numeric($value)))
-          {
-            echo "You must specify a number of ranges to build (e.g. buildRanges=10000)\n";
-            die();
-          }
-          $this->_runMode = self::RUNMODE_BUILD_RANGES;
-          $this->_rangeCount = $value;
-          break;
-        case 'debugger':
-          $this->_enableDebug = true;
-          break;
-        case 'displayReport':
-          $this->_displayReport = $value != 0;
-          break;
-        case 'refreshKeys':
-          $this->_runMode = self::RUNMODE_REFRESH_KEYS;
-          break;
-        case 'countRange':
-          $this->_runMode = self::RUNMODE_COUNT_RANGE;
-          if(isset($args['start']) && isset($args['end']))
-          {
-            $this->_countStartKey = $args['start'];
-            $this->_countEndKey = $args['end'];
-          }
-          else
-          {
-            echo "Usage: countRange start=startKey end=endKey\n";
-            die();
-          }
-          break;
-        case 'getKeys':
-          $this->_runMode = self::RUNMODE_GET_KEYS;
-          if(isset($args['start']) && isset($args['end']))
-          {
-            $this->_getKeysStartToken = $args['start'];
-            $this->_getKeysEndToken = $args['end'];
-            $this->_getKeysCount = isset($args['count']) ? $args['count'] : 5;
-          }
-          else
-          {
-            echo "Usage: getKeys start=startToken end=endToken [count=5]\n";
-            die();
-          }
-          break;
-        case 'start':
-        case 'end':
-        case 'count':
-          break;
-        default:
-          die('Invalid argument: ' . $arg . "\n");
-      }
+      $debugger = new DebuggerBundle();
+      $debugger->init();
+    }
+
+    $this->_instanceName = $this->argumentValue('instance', '');
+    if($this->argumentValue('no-report'))
+    {
+      $this->_displayReport = false;
+    }
+
+    // Run in the appropriate mode
+
+    $buildRanges = $this->argumentValue('build-ranges');
+    $countRange  = $this->argumentValue('count-range');
+    $getKeys     = $this->argumentValue('get-keys');
+    if($buildRanges)
+    {
+      $this->_getRangeManager()->buildRanges($buildRanges);
+    }
+    else if($this->argumentValue('reset-ranges'))
+    {
+      $this->_getRangeManager()->resetRanges();
+    }
+    else if($this->argumentValue('refresh-keys'))
+    {
+      // For testing only: Refresh the keys in all ranges
+      $this->_getRangeManager()->refreshKeysForAllRanges();
+    }
+    else if($countRange)
+    {
+      list($startKey, $endKey) = explode(",", $countRange, 2);
+      $this->_countRange($startKey, $endKey);
+    }
+    else if($getKeys)
+    {
+      list($startToken, $endToken, $count) = explode(",", $getKeys);
+      $this->_getKeys(
+        $startToken,
+        $endToken,
+        $count
+      );
+    }
+    else
+    {
+      // Default run mode - process the ranges...
+      $this->_logger  = new CliLogger(
+        $this->_getEchoLevel(), $this->_getLogLevel(),
+        "", $this->_instanceName
+      );
+      $this->_pidFile = new PidFile("", $this->_instanceName);
+      $this->_getRangeManager()->processAll();
     }
   }
 
@@ -119,48 +135,6 @@ abstract class CassProcessorTask implements CliTask
       );
     }
     return $this->_rangeManager;
-  }
-
-  public function init()
-  {
-    TokenRange::setTableName($this->_getTokenRangesTableName());
-
-    if($this->_enableDebug)
-    {
-      $debugger = new DebuggerBundle();
-      $debugger->init();
-    }
-
-    switch($this->_runMode)
-    {
-      case self::RUNMODE_BUILD_RANGES:
-        $this->_getRangeManager()->buildRanges($this->_rangeCount);
-        break;
-      case self::RUNMODE_RESET_RANGES:
-        $this->_getRangeManager()->resetRanges();
-        break;
-      case self::RUNMODE_REFRESH_KEYS:
-        // For testing only: Refresh the keys in all ranges
-        $this->_getRangeManager()->refreshKeysForAllRanges();
-        break;
-      case self::RUNMODE_COUNT_RANGE:
-        $this->_countRange($this->_countStartKey, $this->_countEndKey);
-        break;
-      case self::RUNMODE_GET_KEYS:
-        $this->_getKeys(
-          $this->_getKeysStartToken,
-          $this->_getKeysEndToken,
-          $this->_getKeysCount
-        );
-        break;
-      default:
-        $logger  = new CliLogger(
-          $this->_getEchoLevel(), $this->_getLogLevel(), "", $this->_instanceName
-        );
-        $pidFile = new PidFile("", $this->_instanceName);
-        $this->_getRangeManager()->processAll();
-        break;
-    }
   }
 
   private function _countRange($startKey, $endKey)
@@ -178,9 +152,9 @@ abstract class CassProcessorTask implements CliTask
 
     $batchSize = 1000;
     $totalKeys = 1;
-    $finished = false;
-    $lastKey = $startKey;
-    while(! $finished)
+    $finished  = false;
+    $lastKey   = $startKey;
+    while(!$finished)
     {
       // ignore the duplicate key from each time around
       $totalKeys--;

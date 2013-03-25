@@ -508,7 +508,7 @@ class RangeManager
     catch(\Exception $e)
     {
       $range->failed = 1;
-      $msg           = $e->getMessage();
+      $msg = $e->getMessage();
       if($msg == "")
       {
         $msg = 'Exception code ' . $e->getCode();
