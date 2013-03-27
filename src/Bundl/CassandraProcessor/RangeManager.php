@@ -178,6 +178,29 @@ class RangeManager
     );
   }
 
+  public function resetRange($rangeId)
+  {
+    $range = new TokenRange($rangeId);
+    if(!$range->exists())
+    {
+      throw new \Exception('Range does not exist: ' . $rangeId);
+    }
+
+    $range->firstKey       = '';
+    $range->lastKey        = '';
+    $range->processing     = 0;
+    $range->hostname       = null;
+    $range->processed      = 0;
+    $range->failed         = 0;
+    $range->processingTime = 0;
+    $range->totalItems     = 0;
+    $range->processedItems = 0;
+    $range->errorCount     = 0;
+    $range->error          = null;
+
+    $range->saveChanges();
+  }
+
   /**
    * For testing only: refresh the keys for all ranges
    */

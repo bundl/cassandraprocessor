@@ -35,6 +35,12 @@ abstract class CassProcessorTask extends CliCommand
       ),
       new CliArgument('reset-ranges', 'Reset the status of all ranges'),
       new CliArgument(
+        'reset-range',
+        'Reset a range to be reprocessed',
+        "", CliArgument::VALUE_REQUIRED, 'rangeId', false, null,
+        Validator::VALIDATE_INT
+      ),
+      new CliArgument(
         'build-ranges',
         'Delete all existing ranges and rebuild with the specified number of ranges',
         "", CliArgument::VALUE_REQUIRED, 'count', false, null,
@@ -83,16 +89,25 @@ abstract class CassProcessorTask extends CliCommand
 
     // Run in the appropriate mode
 
-    $buildRanges = $this->argumentValue('build-ranges');
-    $countRange  = $this->argumentValue('count-range');
-    $getKeys     = $this->argumentValue('get-keys');
-    if($buildRanges)
+    $resetRangeId = $this->argumentValue('reset-range');
+    $buildRanges  = $this->argumentValue('build-ranges');
+    $countRange   = $this->argumentValue('count-range');
+    $getKeys      = $this->argumentValue('get-keys');
+    if($resetRangeId)
+    {
+      echo "Resetting range " . $resetRangeId . "...\n";
+      $this->_getRangeManager()->resetRange($resetRangeId);
+      echo "Finished.\n";
+    }
+    else if($buildRanges)
     {
       $this->_getRangeManager()->buildRanges($buildRanges);
     }
     else if($this->argumentValue('reset-ranges'))
     {
+      echo "Resetting all ranges...\n";
       $this->_getRangeManager()->resetRanges();
+      echo "Finished.\n";
     }
     else if($this->argumentValue('refresh-keys'))
     {
