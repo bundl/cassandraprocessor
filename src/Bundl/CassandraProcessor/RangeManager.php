@@ -132,10 +132,12 @@ class RangeManager
 
     $numCreated = 0;
     $prevToken  = "";
-    for($tok = $firstToken; bccomp($tok, $lastToken) < 1; $tok = bcadd(
-      $tok,
-      $interval
-    ))
+    $lastRange = null;
+    for(
+      $tok = $firstToken;
+      bccomp($tok, $lastToken) < 1;
+      $tok = bcadd($tok, $interval)
+    )
     {
       if($prevToken !== "")
       {
@@ -144,24 +146,32 @@ class RangeManager
         $range->endToken   = $tok;
         $range->randomKey  = rand(1, 10000);
         $range->saveChanges();
+        $lastRange = $range;
+
+        $numCreated++;
       }
 
-      $numCreated++;
       Shell::clearLine();
-      echo "Creating ranges... " . number_format(
-        $numCreated
-      ) . " / " . number_format($numRanges);
+      echo "Creating ranges... " .
+        number_format($numCreated) . " / " . number_format($numRanges);
 
       $prevToken = $tok;
     }
 
-    // Catch left over tokens
+    // Catch left over tokens and add them to the last range
     if(bccomp(bcsub($lastToken, $prevToken), 0) == 1)
     {
-      $range             = new TokenRange();
-      $range->startToken = $prevToken;
+      if($lastRange)
+      {
+        $range = $lastRange;
+      }
+      else
+      {
+        $range = new TokenRange();
+        $range->startToken = $prevToken;
+        $range->randomKey  = rand(1, 10000);
+      }
       $range->endToken   = $lastToken;
-      $range->randomKey  = rand(1, 10000);
       $range->saveChanges();
     }
 
