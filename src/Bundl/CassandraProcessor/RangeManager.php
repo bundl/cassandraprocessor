@@ -8,6 +8,7 @@ namespace Bundl\CassandraProcessor;
 use Bundl\CassandraProcessor\Mappers\TokenRange;
 use Cubex\Cli\Shell;
 use Cubex\Facade\Cassandra;
+use Cubex\KvStore\Cassandra\CassandraException;
 use Cubex\KvStore\Cassandra\ColumnFamily;
 use Cubex\Log\Log;
 use Cubex\Mapper\Database\RecordCollection;
@@ -389,9 +390,18 @@ class RangeManager
       }
 
       // Refresh the keys for this range
-      $this->refreshKeysForRange($range);
+      try
+      {
+        $this->refreshKeysForRange($range);
+        $success = true;
+      }
+      catch(CassandraException $e)
+      {
+        $success = false;
+      }
 
       if(
+        $success &&
         (($range->firstKey != "") || ($range->lastKey != "")) &&
         (! starts_with($range->lastKey, 'empty:')) &&
         ($range->firstKey != $range->lastKey)
@@ -403,18 +413,29 @@ class RangeManager
       {
         // Re-queue the range if there was an error getting the keys
         Log::error('Error getting the keys for range ' . $range->id());
-
-        $range->processing     = 0;
-        $range->processed      = 0;
-        $range->processingTime = 0;
-        $range->totalItems     = 0;
-        $range->processedItems = 0;
-        $range->errorCount     = 0;
-        $range->randomKey      = rand(0, 10000);
-        $range->hostname       = "";
-        $range->saveChanges();
+        $this->_requeueRange($range);
       }
     }
+  }
+
+  /**
+   * Re-queue a range with a new random key so it can be processed later
+   *
+   * @param TokenRange $range
+   */
+  private function _requeueRange(TokenRange $range)
+  {
+    Log::info('Re-queueing range ' . $range->id() . ' to process later');
+
+    $range->processing     = 0;
+    $range->processed      = 0;
+    $range->processingTime = 0;
+    $range->totalItems     = 0;
+    $range->processedItems = 0;
+    $range->errorCount     = 0;
+    $range->randomKey      = rand(0, 10000);
+    $range->hostname       = "";
+    $range->saveChanges();
   }
 
   public function processRange(TokenRange $range)
@@ -540,17 +561,29 @@ class RangeManager
     }
     catch(\Exception $e)
     {
-      $range->failed = 1;
-      $msg = $e->getMessage();
-      if($msg == "")
+      $msg = "Code " . $e->getCode();
+      $exMsg = $e->getMessage();
+      if($exMsg != "")
       {
-        $msg = 'Exception code ' . $e->getCode();
+        $msg .= ": " . $exMsg;
       }
-      $range->error = $msg;
       Log::error(
-        'Error processing range: ' . $msg . "\n\nBacktrace:\n" . $e->getTraceAsString(
-        )
+        'Error processing range: ' . $msg . "\n\nBacktrace:\n" .
+        $e->getTraceAsString()
       );
+
+      // Check for non-fatal errors (i.e. Cassandra timeouts)
+      if(($e instanceof CassandraException)
+      && (($e->getCode() == 408) || starts_with($e->getMessage(), 'TSocket: timed out reading'))
+      )
+      {
+        $this->_requeueRange($range);
+      }
+      else
+      {
+        $range->error = $msg;
+        $range->failed = 1;
+      }
     }
 
     $range->processing     = 0;
