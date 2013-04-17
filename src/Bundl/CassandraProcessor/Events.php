@@ -19,4 +19,7 @@ class Events
   const REQUEUE_RANGE_END        = 'cassandraprocessor.requeueRange.end';
   const RANGE_SAVE_CHANGES_START = 'cassandraprocessor.rangeSaveChanges.start';
   const RANGE_SAVE_CHANGES_END   = 'cassandraprocessor.rangeSaveChanges.end';
+
+  const DISPLAY_REPORT_START = 'cassandraprocessor.displayReport.start';
+  const DISPLAY_REPORT_END   = 'cassandraprocessor.displayReport.end';
 }

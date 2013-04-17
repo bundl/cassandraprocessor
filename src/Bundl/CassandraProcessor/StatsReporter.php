@@ -7,6 +7,7 @@ namespace Bundl\CassandraProcessor;
 
 use Bundl\CassandraProcessor\Mappers\TokenRange;
 use Cubex\Cli\Shell;
+use Cubex\Events\EventManager;
 use Cubex\Log\Log;
 
 class StatsReporter
@@ -185,6 +186,8 @@ class StatsReporter
   )
   {
     ob_start();
+    EventManager::trigger(Events::DISPLAY_REPORT_START);
+
     $this->_displayReportHeader('Current Range', false);
     echo Shell::colourText(
       " (" . $currentRange->id() . ")",
@@ -223,6 +226,8 @@ class StatsReporter
     echo "\n";
     $this->_displayReportLine('Last key processed', $lastKey);
 
+    EventManager::trigger(Events::DISPLAY_REPORT_END);
+
     // Store the pretty report
     return ob_get_clean();
   }
@@ -249,6 +254,7 @@ class StatsReporter
     echo "  " . Shell::colourText($labelTxt, $labelColour);
     echo Shell::colourText(" : ", $colonColour);
     echo Shell::colourText($value, $valueColour);
+    Shell::clearToEol();
     echo "\n";
   }
 
