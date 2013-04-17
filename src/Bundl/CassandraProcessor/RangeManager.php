@@ -7,6 +7,7 @@ namespace Bundl\CassandraProcessor;
 
 use Bundl\CassandraProcessor\Mappers\TokenRange;
 use Cubex\Cli\Shell;
+use Cubex\Events\EventManager;
 use Cubex\Facade\Cassandra;
 use Cubex\KvStore\Cassandra\CassandraException;
 use Cubex\KvStore\Cassandra\ColumnFamily;
@@ -14,6 +15,7 @@ use Cubex\Log\Log;
 use Cubex\Mapper\Database\RecordCollection;
 use Cubex\Mapper\Database\SearchObject;
 use Cubex\Sprintf\ParseQuery;
+use cassandra\ConsistencyLevel;
 
 class RangeManager
 {
@@ -23,6 +25,7 @@ class RangeManager
   private $_processor;
   private $_minToken;
   private $_maxToken;
+  private $_consistencyLevel;
 
   private $_scriptProgress;
   private $_instanceName;
@@ -33,12 +36,13 @@ class RangeManager
   private $_batchSizeTuner;
 
   public function __construct(
-    $cassandraServiceName, $columnFamily, ItemProcessor $processor,
-    $instanceName = "", $displayReport = true
+    $cassandraServiceName, $columnFamily, $consistencyLevel,
+    ItemProcessor $processor, $instanceName = "", $displayReport = true
   )
   {
     $this->_cassandraServiceName = $cassandraServiceName;
     $this->_columnFamily         = $columnFamily;
+    $this->_consistencyLevel     = $consistencyLevel;
     $this->_cf                   = null;
     $this->_processor            = $processor;
     $this->_scriptProgress       = new ScriptProgress();
@@ -58,7 +62,9 @@ class RangeManager
     $this->_statsReporter->displayPrettyReport = $displayReport;
 
     $this->_batchSizeTuner        = new BatchSizeTuner();
-    $this->_batchSizeTuner->setBatchSizeLimitsArr($this->_processor->getBatchSize());
+    $this->_batchSizeTuner->setBatchSizeLimitsArr(
+      $this->_processor->getBatchSize()
+    );
   }
 
   private function _calcMinMaxTokens()
@@ -84,7 +90,9 @@ class RangeManager
   {
     if($refresh || (! $this->_cf))
     {
-      $cass      = Cassandra::getAccessor($this->_cassandraServiceName);
+      EventManager::trigger(Events::CASS_CONNECT_START);
+
+      $cass = Cassandra::getAccessor($this->_cassandraServiceName);
       if($refresh)
       {
         $cass->disconnect();
@@ -111,6 +119,9 @@ class RangeManager
       }
 
       $this->_cf = $cass->cf($this->_columnFamily, false);
+      $this->_cf->setConsistencyLevel($this->_consistencyLevel);
+
+      EventManager::trigger(Events::CASS_CONNECT_END);
     }
     return $this->_cf;
   }
@@ -233,6 +244,8 @@ class RangeManager
 
   public function refreshKeysForRange(TokenRange $range)
   {
+    EventManager::trigger(Events::REFRESH_KEYS_START);
+
     $cf = $this->_getCF(true);
 
     $range->firstKey = '';
@@ -278,6 +291,8 @@ class RangeManager
       $range->lastKey = $lastKey;
       $range->saveChanges();
     }
+
+    EventManager::trigger(Events::REFRESH_KEYS_END);
   }
 
 
@@ -311,6 +326,8 @@ class RangeManager
 
   private function _getKeysWithRetry(ColumnFamily &$cf, $lastKey, $rangeLastKey, $batchSize, $cols)
   {
+    EventManager::trigger(Events::GET_KEYS_START);
+
     $items = null;
     $tries = 0;
     while(true)
@@ -334,6 +351,7 @@ class RangeManager
       }
     }
 
+    EventManager::trigger(Events::GET_KEYS_END);
     return $items;
   }
 
@@ -343,6 +361,8 @@ class RangeManager
    */
   public function claimNextFreeRange()
   {
+    EventManager::trigger(Events::CLAIM_RANGE_START);
+
     $range = false;
     $db    = TokenRange::conn();
 
@@ -374,6 +394,7 @@ class RangeManager
       }
     }
 
+    EventManager::trigger(Events::CLAIM_RANGE_END);
     return $range;
   }
 
@@ -425,6 +446,7 @@ class RangeManager
    */
   private function _requeueRange(TokenRange $range)
   {
+    EventManager::trigger(Events::REQUEUE_RANGE_START);
     Log::info('Re-queueing range ' . $range->id() . ' to process later');
 
     $range->processing     = 0;
@@ -436,6 +458,7 @@ class RangeManager
     $range->randomKey      = rand(0, 10000);
     $range->hostname       = "";
     $range->saveChanges();
+    EventManager::trigger(Events::REQUEUE_RANGE_END);
   }
 
   public function processRange(TokenRange $range)

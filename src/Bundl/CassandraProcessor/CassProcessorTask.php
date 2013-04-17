@@ -14,6 +14,7 @@ use Cubex\Cli\PidFile;
 use Cubex\Cli\Shell;
 use Cubex\Data\Validator\Validator;
 use Cubex\Facade\Cassandra;
+use cassandra\ConsistencyLevel;
 
 abstract class CassProcessorTask extends CliCommand
 {
@@ -146,7 +147,8 @@ abstract class CassProcessorTask extends CliCommand
     {
       $this->_rangeManager = new RangeManager(
         $this->_getCassServiceName(), $this->_getColumnFamilyName(),
-        $this->_getProcessor(), $this->_instanceName, $this->_displayReport
+        $this->_getConsistencyLevel(), $this->_getProcessor(),
+        $this->_instanceName, $this->_displayReport
       );
     }
     return $this->_rangeManager;
@@ -223,6 +225,14 @@ abstract class CassProcessorTask extends CliCommand
   protected function _getTokenRangesTableName()
   {
     return 'token_ranges';
+  }
+
+  /**
+   * Return the consistency level to use when reading from the CF
+   */
+  protected function _getConsistencyLevel()
+  {
+    return ConsistencyLevel::QUORUM;
   }
 
   /**

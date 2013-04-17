@@ -5,6 +5,8 @@
 
 namespace Bundl\CassandraProcessor\Mappers;
 
+use Bundl\CassandraProcessor\Events;
+use Cubex\Events\EventManager;
 use Cubex\Mapper\Database\RecordMapper;
 
 class TokenRange extends RecordMapper
@@ -67,5 +69,12 @@ class TokenRange extends RecordMapper
   public function getTableName()
   {
     return self::$_tokenRangesTableName;
+  }
+
+  public function saveChanges()
+  {
+    EventManager::trigger(Events::RANGE_SAVE_CHANGES_START);
+    parent::saveChanges();
+    EventManager::trigger(Events::RANGE_SAVE_CHANGES_END);
   }
 }
