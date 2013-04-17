@@ -147,7 +147,7 @@ abstract class CassProcessorTask extends CliCommand
     {
       $this->_rangeManager = new RangeManager(
         $this->_getCassServiceName(), $this->_getColumnFamilyName(),
-        $this->_getConsistencyLevel(), $this->_getProcessor(),
+        $this->_getReadConsistencyLevel(), $this->_getProcessor(),
         $this->_instanceName, $this->_displayReport
       );
     }
@@ -230,7 +230,7 @@ abstract class CassProcessorTask extends CliCommand
   /**
    * Return the consistency level to use when reading from the CF
    */
-  protected function _getConsistencyLevel()
+  protected function _getReadConsistencyLevel()
   {
     return ConsistencyLevel::QUORUM;
   }

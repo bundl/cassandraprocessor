@@ -25,7 +25,7 @@ class RangeManager
   private $_processor;
   private $_minToken;
   private $_maxToken;
-  private $_consistencyLevel;
+  private $_readConsistencyLevel;
 
   private $_scriptProgress;
   private $_instanceName;
@@ -36,13 +36,13 @@ class RangeManager
   private $_batchSizeTuner;
 
   public function __construct(
-    $cassandraServiceName, $columnFamily, $consistencyLevel,
+    $cassandraServiceName, $columnFamily, $readConsistency,
     ItemProcessor $processor, $instanceName = "", $displayReport = true
   )
   {
     $this->_cassandraServiceName = $cassandraServiceName;
     $this->_columnFamily         = $columnFamily;
-    $this->_consistencyLevel     = $consistencyLevel;
+    $this->_readConsistencyLevel     = $readConsistency;
     $this->_cf                   = null;
     $this->_processor            = $processor;
     $this->_scriptProgress       = new ScriptProgress();
@@ -119,7 +119,7 @@ class RangeManager
       }
 
       $this->_cf = $cass->cf($this->_columnFamily, false);
-      $this->_cf->setConsistencyLevel($this->_consistencyLevel);
+      $this->_cf->setReadConsistencyLevel($this->_readConsistencyLevel);
 
       EventManager::trigger(Events::CASS_CONNECT_END);
     }
