@@ -110,8 +110,7 @@ class StatsReporter
 
     if($this->displayPrettyReport)
     {
-      Shell::clear();
-      echo $prettyReport;
+      Shell::redrawScreen($prettyReport);
     }
 
     // Store the pretty report in a file
