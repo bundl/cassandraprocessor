@@ -18,11 +18,11 @@ use cassandra\ConsistencyLevel;
 
 abstract class CassProcessorTask extends CliCommand
 {
+  protected $_autoLog = false;
   protected $_instanceName = "";
   protected $_enableDebug = false;
   protected $_displayReport = true;
   private $_rangeManager = null;
-  private $_logger = null;
   private $_pidFile = null;
 
   protected function _argumentsList()
