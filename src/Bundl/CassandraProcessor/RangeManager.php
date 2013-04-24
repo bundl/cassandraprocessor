@@ -473,6 +473,7 @@ class RangeManager
     $processedItems = 0;
     $errors         = 0;
     $rangeStartTime = microtime(true);
+    $okToSave       = true;
     try
     {
       $cf   = $this->_getCF();
@@ -596,10 +597,16 @@ class RangeManager
       );
 
       // Check for non-fatal errors (i.e. Cassandra timeouts)
-      if(($e instanceof CassandraException)
-      && (($e->getCode() == 408) || starts_with($e->getMessage(), 'TSocket: timed out reading'))
+      if(
+        ($e instanceof CassandraException)
+        && (
+          ($e->getCode() == 408) ||
+          ($e->getCode() == 503) ||
+          starts_with($e->getMessage(), 'TSocket: timed out')
+        )
       )
       {
+        $okToSave = false;
         $this->_requeueRange($range);
       }
       else
@@ -609,14 +616,17 @@ class RangeManager
       }
     }
 
-    $range->processing     = 0;
-    $range->processed      = 1;
-    $range->processingTime = microtime(true) - $rangeStartTime;
-    $range->totalItems     = $totalItems;
-    $range->processedItems = $processedItems;
-    $range->errorCount     = $errors;
+    if($okToSave)
+    {
+      $range->processing     = 0;
+      $range->processed      = 1;
+      $range->processingTime = microtime(true) - $rangeStartTime;
+      $range->totalItems     = $totalItems;
+      $range->processedItems = $processedItems;
+      $range->errorCount     = $errors;
 
-    $range->saveChanges();
+      $range->saveChanges();
+    }
   }
 }
 
