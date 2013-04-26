@@ -15,6 +15,7 @@ use Cubex\Log\Log;
 use Cubex\Mapper\Database\RecordCollection;
 use Cubex\Mapper\Database\SearchObject;
 use Cubex\Sprintf\ParseQuery;
+use Cubex\Text\TextTable;
 use cassandra\ConsistencyLevel;
 
 class RangeManager
@@ -627,6 +628,56 @@ class RangeManager
 
       $range->saveChanges();
     }
+  }
+
+  public function listFailedRanges($limit)
+  {
+    $db = TokenRange::conn();
+    $total = $db->getField(
+      ParseQuery::parse(
+        $db,
+        'SELECT COUNT(*) FROM %T WHERE failed=1',
+        TokenRange::tableName()
+      )
+    );
+
+    if($total > 0)
+    {
+      $coll = new RecordCollection(new TokenRange());
+      $coll->loadWhere(['failed' => 1])->setLimit(0, $limit);
+
+      $table = new TextTable();
+      $table->setColumnHeaders('id', 'hostname', 'error');
+
+      foreach($coll as $range)
+      {
+        $table->appendRow([$range->id, $range->hostname, $range->error]);
+      }
+;      echo "Displaying " . $coll->count() . " of " . $total . " failed ranges\n";
+      echo $table;
+    }
+    else
+    {
+      echo "No failed ranges were found.\n";
+    }
+  }
+
+  public function resetFailedRanges()
+  {
+    $db = TokenRange::conn();
+    $tableName = TokenRange::tableName();
+
+    echo "Resetting failed ranges...\n";
+
+    $db->query(
+      ParseQuery::parse(
+        $db,
+        "UPDATE %T SET processed=0, failed=0, hostname='' WHERE failed=1",
+        $tableName
+      )
+    );
+
+    echo "Finished. " . $db->affectedRows() . " ranges were reset.\n";
   }
 }
 

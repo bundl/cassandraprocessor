@@ -49,7 +49,9 @@ abstract class CassProcessorTask extends CliCommand
       ),
       new CliArgument('debug', 'If set then include the DebuggerBundle'),
       new CliArgument('no-report', 'Don\'t show the processing report'),
-      new CliArgument('refresh-keys', 'For testing only: Refresh the keys in all ranges'),
+      new CliArgument(
+        'refresh-keys', 'For testing only: Refresh the keys in all ranges'
+      ),
       new CliArgument(
         'count-range',
         'Count the number of keys in a range',
@@ -63,6 +65,20 @@ abstract class CassProcessorTask extends CliCommand
         '',
         CliArgument::VALUE_REQUIRED,
         'startToken,endToken,count'
+      ),
+      new CliArgument(
+        'list-failed',
+        'List failed ranges, defaults to 100',
+        '',
+        CliArgument::VALUE_OPTIONAL,
+        'limit',
+        false,
+        100,
+        Validator::VALIDATE_INT
+      ),
+      new CliArgument(
+        'reset-failed',
+        'Reset all failed ranges'
       )
     ];
   }
@@ -94,6 +110,9 @@ abstract class CassProcessorTask extends CliCommand
     $buildRanges  = $this->argumentValue('build-ranges');
     $countRange   = $this->argumentValue('count-range');
     $getKeys      = $this->argumentValue('get-keys');
+    $resetFailed  = $this->argumentIsSet('reset-failed');
+    $listFailed   = $this->argumentIsSet('list-failed') ?
+      $this->argumentValue('list-failed') : false;
     if($resetRangeId)
     {
       echo "Resetting range " . $resetRangeId . "...\n";
@@ -128,6 +147,14 @@ abstract class CassProcessorTask extends CliCommand
         $endToken,
         $count
       );
+    }
+    else if($listFailed)
+    {
+      $this->_getRangeManager()->listFailedRanges($listFailed);
+    }
+    else if($resetFailed)
+    {
+      $this->_getRangeManager()->resetFailedRanges();
     }
     else
     {
