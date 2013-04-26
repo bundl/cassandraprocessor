@@ -653,7 +653,7 @@ class RangeManager
       {
         $table->appendRow([$range->id, $range->hostname, $range->error]);
       }
-;      echo "Displaying " . $coll->count() . " of " . $total . " failed ranges\n";
+      echo "Displaying " . $coll->count() . " of " . $total . " failed ranges\n";
       echo $table;
     }
     else
