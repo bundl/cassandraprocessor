@@ -8,7 +8,10 @@ namespace Bundl\CassandraProcessor;
 use Bundl\CassandraProcessor\Mappers\TokenRange;
 use Cubex\Cli\Shell;
 use Cubex\Events\EventManager;
+use Cubex\Helpers\DateTimeHelper;
 use Cubex\Log\Log;
+use Cubex\Text\ReportTableDecorator;
+use Cubex\Text\TextTable;
 
 class StatsReporter
 {
@@ -160,14 +163,14 @@ class StatsReporter
   {
     // Log the stats
     Log::info(
-      "CURRENT RANGE: Run time " . $this->_secsToTime(
+      "CURRENT RANGE: Run time " . DateTimeHelper::secondsToTime(
         $now - $rangeStartTime
       ) .
       ", Processed " . $rangeProcessed . " of " .
       $rangeTotal . " items, " . $rangeErrors . " errors"
     );
     Log::info(
-      "OVERALL: Run time " . $this->_secsToTime($totalDuration) .
+      "OVERALL: Run time " . DateTimeHelper::secondsToTime($totalDuration) .
       ", Processed " . $this->processedItems . " of " .
       $this->totalItems . " items, " .
       $this->errors . " errors"
@@ -187,94 +190,52 @@ class StatsReporter
     $averageRate, $lastKey
   )
   {
-    ob_start();
-    EventManager::trigger(Events::DISPLAY_REPORT_START);
+    $t = new TextTable(new ReportTableDecorator());
 
-    $this->_displayReportHeader('Current Range', false);
-    echo Shell::colourText(
-      " (" . $currentRange->id() . ")",
-      Shell::COLOUR_FOREGROUND_LIGHT_GREY
-    ) . "\n";
-    $this->_displayReportLine('Start token', $currentRange->startToken);
-    $this->_displayReportLine('End token', $currentRange->endToken);
-    $this->_displayReportLine('First key', $currentRange->firstKey);
-    $this->_displayReportLine('Last key', $currentRange->lastKey);
-    $this->_displayReportHeader('Range statistics');
-    $this->_displayReportLine(
-      'Processing time',
-      $this->_secsToTime($now - $rangeStartTime)
+    $t->appendSubHeading(
+      'Current Range ' . Shell::colourText(
+        "(" . $currentRange->id() . ")",
+        Shell::COLOUR_FOREGROUND_LIGHT_GREY
+      )
     );
-    $this->_displayReportLine('Total items', number_format($rangeTotal));
-    $this->_displayReportLine(
-      'Processed items',
-      number_format($rangeProcessed)
+    $t->appendRows(
+      [
+        ['Start token', $currentRange->startToken],
+        ['End token', $currentRange->endToken],
+        ['First key', $currentRange->firstKey],
+        ['Last key', $currentRange->lastKey]
+      ]
     );
-    $this->_displayReportLine('Skipped', number_format($rangeSkipped));
-    $this->_displayReportLine('Errors', number_format($rangeErrors));
-    $this->_displayReportLine(
-      'Processing rate',
-      number_format($currentRate) . ' items/second'
+    $t->appendSubHeading('Range statistics');
+    $t->appendRows(
+      [
+        [
+          'Processing time',
+          DateTimeHelper::secondsToTime($now - $rangeStartTime)
+        ],
+        ['Total items', number_format($rangeTotal)],
+        ['Processed items', number_format($rangeProcessed)],
+        ['Skipped', number_format($rangeSkipped)],
+        ['Errors', number_format($rangeErrors)],
+        ['Processing rate', number_format($currentRate) . ' items/second']
+      ]
     );
-    $this->_displayReportHeader('Total');
-    $this->_displayReportLine(
-      'Processing time',
-      $this->_secsToTime($totalDuration)
+    $t->appendSubHeading('Total');
+    $t->appendRows(
+      [
+        ['Processing time', DateTimeHelper::secondsToTime($totalDuration)],
+        ['Total items', number_format($this->totalItems)],
+        ['Processed items', number_format($this->processedItems)],
+        ['Skipped', number_format($totalSkipped)],
+        ['Errors', number_format($this->errors)],
+        ['Processing rate', number_format($averageRate) . ' items/second']
+      ]
     );
-    $this->_displayReportLine('Total items', number_format($this->totalItems));
-    $this->_displayReportLine(
-      'Processed items',
-      number_format($this->processedItems)
-    );
-    $this->_displayReportLine('Skipped', number_format($totalSkipped));
-    $this->_displayReportLine('Errors', number_format($this->errors));
-    $this->_displayReportLine(
-      'Processing rate',
-      number_format($averageRate) . ' items/second'
-    );
-    echo "\n";
-    $this->_displayReportLine('Last key processed', $lastKey);
+    $t->appendSpacer();
+    $t->appendRow(['Last key processed', $lastKey]);
 
     EventManager::trigger(Events::DISPLAY_REPORT_END);
 
-    // Store the pretty report
-    return ob_get_clean();
-  }
-
-
-  private function _displayReportHeader($text, $newLine = true)
-  {
-    echo "\n ";
-    echo Shell::colourText($text, Shell::COLOUR_FOREGROUND_LIGHT_RED);
-    if($newLine)
-    {
-      echo "\n";
-    }
-  }
-
-  private function _displayReportLine($label, $value)
-  {
-    $labelSize   = 18;
-    $labelColour = Shell::COLOUR_FOREGROUND_LIGHT_GREEN;
-    $colonColour = Shell::COLOUR_FOREGROUND_YELLOW;
-    $valueColour = Shell::COLOUR_FOREGROUND_WHITE;
-
-    $labelTxt = $label . str_repeat(" ", $labelSize - strlen($label));
-    echo "  " . Shell::colourText($labelTxt, $labelColour);
-    echo Shell::colourText(" : ", $colonColour);
-    echo Shell::colourText($value, $valueColour);
-    Shell::clearToEol();
-    echo "\n";
-  }
-
-
-  private function _secsToTime($secs)
-  {
-    $secs  = round($secs);
-    $hours = floor($secs / 3600);
-    $secs -= $hours * 3600;
-    $mins = floor($secs / 60);
-    $secs -= $mins * 60;
-
-    return sprintf("%d:%02d:%02d", $hours, $mins, $secs);
+    return $t->__toString();
   }
 }
