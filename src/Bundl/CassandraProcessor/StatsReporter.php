@@ -163,15 +163,18 @@ class StatsReporter
       "CURRENT RANGE: Run time " . $this->_secsToTime(
         $now - $rangeStartTime
       ) .
-      ", Processed " . $rangeProcessed . " of " . $rangeTotal . " items, " . $rangeErrors . " errors"
+      ", Processed " . $rangeProcessed . " of " .
+      $rangeTotal . " items, " . $rangeErrors . " errors"
     );
     Log::info(
       "OVERALL: Run time " . $this->_secsToTime($totalDuration) .
-      ", Processed " . $this->processedItems . " of " . $this->totalItems . " items, " .
+      ", Processed " . $this->processedItems . " of " .
+      $this->totalItems . " items, " .
       $this->errors . " errors"
     );
     Log::info(
-      "Current rate: " . $currentRate . " items/second, Average rate: " . $averageRate . " items/second"
+      "Current rate: " . $currentRate . " items/second, Average rate: " .
+      $averageRate . " items/second"
     );
     Log::info("Last key: " . $lastKey);
   }
@@ -201,26 +204,32 @@ class StatsReporter
       'Processing time',
       $this->_secsToTime($now - $rangeStartTime)
     );
-    $this->_displayReportLine('Total items', $rangeTotal);
-    $this->_displayReportLine('Processed items', $rangeProcessed);
-    $this->_displayReportLine('Skipped', $rangeSkipped);
-    $this->_displayReportLine('Errors', $rangeErrors);
+    $this->_displayReportLine('Total items', number_format($rangeTotal));
+    $this->_displayReportLine(
+      'Processed items',
+      number_format($rangeProcessed)
+    );
+    $this->_displayReportLine('Skipped', number_format($rangeSkipped));
+    $this->_displayReportLine('Errors', number_format($rangeErrors));
     $this->_displayReportLine(
       'Processing rate',
-      $currentRate . ' items/second'
+      number_format($currentRate) . ' items/second'
     );
     $this->_displayReportHeader('Total');
     $this->_displayReportLine(
       'Processing time',
       $this->_secsToTime($totalDuration)
     );
-    $this->_displayReportLine('Total items', $this->totalItems);
-    $this->_displayReportLine('Processed items', $this->processedItems);
-    $this->_displayReportLine('Skipped', $totalSkipped);
-    $this->_displayReportLine('Errors', $this->errors);
+    $this->_displayReportLine('Total items', number_format($this->totalItems));
+    $this->_displayReportLine(
+      'Processed items',
+      number_format($this->processedItems)
+    );
+    $this->_displayReportLine('Skipped', number_format($totalSkipped));
+    $this->_displayReportLine('Errors', number_format($this->errors));
     $this->_displayReportLine(
       'Processing rate',
-      $averageRate . ' items/second'
+      number_format($averageRate) . ' items/second'
     );
     echo "\n";
     $this->_displayReportLine('Last key processed', $lastKey);
