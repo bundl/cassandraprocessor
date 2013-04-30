@@ -234,8 +234,9 @@ class StatsReporter
     $t->appendSpacer();
     $t->appendRow(['Last key processed', $lastKey]);
 
+    ob_start();
+    echo $t;
     EventManager::trigger(Events::DISPLAY_REPORT_END);
-
-    return $t->__toString();
+    return ob_get_clean();
   }
 }
