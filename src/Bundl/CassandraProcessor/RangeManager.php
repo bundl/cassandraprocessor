@@ -225,8 +225,9 @@ class RangeManager
     $tableName = (new TokenRange())->getTableName();
     $conn      = TokenRange::conn();
     $conn->query(
-      "UPDATE `" . $tableName . "` SET firstKey='', lastKey='', processing=0, hostname=NULL, processed=0, failed=0, " .
-      "processingTime=0, totalItems=0, processedItems=0, errorCount=0, error=NULL"
+      "UPDATE `" . $tableName . "` SET firstKey='', lastKey='', processing=0," .
+      "hostname=NULL, processed=0, failed=0, processingTime=0, " .
+      "totalItems=0, processedItems=0, errorCount=0, error=NULL"
     );
   }
 
@@ -267,7 +268,8 @@ class RangeManager
       $processed++;
 
       Shell::clearLine();
-      echo "Processed: " . number_format($processed) . ' / ' . number_format($total);
+      echo "Processed: " . number_format($processed) .
+        ' / ' . number_format($total);
     }
     echo "\n";
   }
@@ -287,13 +289,19 @@ class RangeManager
     $gotLast = false;
 
     // get the first and last keys in the CF
-    $firstItemInCF = $this->_getTokensWithRetry($cf, $this->_minToken, $this->_minToken, 1);
+    $firstItemInCF = $this->_getTokensWithRetry(
+      $cf, $this->_minToken, $this->_minToken, 1
+    );
     $firstKeyInCF = key($firstItemInCF);
-    $lastItemInCF = $this->_getTokensWithRetry($cf, $this->_maxToken, $this->_maxToken, 1);
+    $lastItemInCF = $this->_getTokensWithRetry(
+      $cf, $this->_maxToken, $this->_maxToken, 1
+    );
     $lastKeyInCF = key($lastItemInCF);
 
 
-    $firstItem = $this->_getTokensWithRetry($cf, $range->startToken, $range->startToken, 1);
+    $firstItem = $this->_getTokensWithRetry(
+      $cf, $range->startToken, $range->startToken, 1
+    );
     if($firstItem)
     {
       $firstKey = key($firstItem);
@@ -304,7 +312,9 @@ class RangeManager
       $gotFirst = true;
     }
 
-    $lastItem = $this->_getTokensWithRetry($cf, $range->endToken, $range->endToken, 1);
+    $lastItem = $this->_getTokensWithRetry(
+      $cf, $range->endToken, $range->endToken, 1
+    );
     if($lastItem)
     {
       $lastKey = key($lastItem);
@@ -326,7 +336,9 @@ class RangeManager
   }
 
 
-  private function _getTokensWithRetry(ColumnFamily &$cf, $startToken, $endToken, $count)
+  private function _getTokensWithRetry(
+    ColumnFamily &$cf, $startToken, $endToken, $count
+  )
   {
     $tries = 0;
     $res = null;
@@ -354,7 +366,9 @@ class RangeManager
     return $res;
   }
 
-  private function _getKeysWithRetry(ColumnFamily &$cf, $lastKey, $rangeLastKey, $batchSize, $cols)
+  private function _getKeysWithRetry(
+    ColumnFamily &$cf, $lastKey, $rangeLastKey, $batchSize, $cols
+  )
   {
     EventManager::trigger(Events::GET_KEYS_START);
 
@@ -516,7 +530,9 @@ class RangeManager
       {
         $this->_batchSizeTuner->nextBatch();
         $batchSize = $this->_batchSizeTuner->getBatchSize();
-        $items = $this->_getKeysWithRetry($cf, $lastKey, $rangeLastKey, $batchSize, $cols);
+        $items = $this->_getKeysWithRetry(
+          $cf, $lastKey, $rangeLastKey, $batchSize, $cols
+        );
         //$items = $cf->getKeys($lastKey, $rangeLastKey, $batchSize, $cols);
 
         if(!$items)
@@ -525,7 +541,8 @@ class RangeManager
           break;
         }
 
-        // Skip the last item in the range because this will be the first item in the next range
+        // Skip the last item in the range because this will be the
+        // first item in the next range
         if(($rangeLastKey != "") && (last_key($items) == $rangeLastKey))
         {
           array_pop($items);
