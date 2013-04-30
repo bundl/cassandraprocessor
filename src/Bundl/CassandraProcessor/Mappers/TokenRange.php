@@ -56,7 +56,6 @@ class TokenRange extends RecordMapper
   public $error;
   public $hostname;
 
-  protected $_autoTimestamp = false;
   protected $_schemaType = self::SCHEMA_CAMELCASE;
 
   private static $_tokenRangesTableName = 'token_ranges';
@@ -76,5 +75,14 @@ class TokenRange extends RecordMapper
     EventManager::trigger(Events::RANGE_SAVE_CHANGES_START);
     parent::saveChanges();
     EventManager::trigger(Events::RANGE_SAVE_CHANGES_END);
+  }
+
+  public function createdAttribute()
+  {
+    return 'createdAt';
+  }
+  public function updatedAttribute()
+  {
+    return 'updatedAt';
   }
 }
