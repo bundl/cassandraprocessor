@@ -164,8 +164,17 @@ abstract class CassProcessorTask extends CliCommand
         "", $this->_instanceName
       );
       $this->_pidFile = new PidFile("", $this->_instanceName);
+      $this->_initProcessingRun();
       $this->_getRangeManager()->processAll();
     }
+  }
+
+  /**
+   * Override this to perform any operations that need to be done before
+   * starting the processing run
+   */
+  protected function _initProcessingRun()
+  {
   }
 
   protected function _getRangeManager()
@@ -174,8 +183,7 @@ abstract class CassProcessorTask extends CliCommand
     {
       $this->_rangeManager = new RangeManager(
         $this->_getCassServiceName(), $this->_getColumnFamilyName(),
-        $this->_getReadConsistencyLevel(), $this->_getProcessor(),
-        $this->_instanceName, $this->_displayReport
+        $this->_getProcessor(), $this->_instanceName, $this->_displayReport
       );
     }
     return $this->_rangeManager;
@@ -252,14 +260,6 @@ abstract class CassProcessorTask extends CliCommand
   protected function _getTokenRangesTableName()
   {
     return 'token_ranges';
-  }
-
-  /**
-   * Return the consistency level to use when reading from the CF
-   */
-  protected function _getReadConsistencyLevel()
-  {
-    return ConsistencyLevel::QUORUM;
   }
 
   /**

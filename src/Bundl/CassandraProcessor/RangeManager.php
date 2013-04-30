@@ -20,35 +20,40 @@ use cassandra\ConsistencyLevel;
 
 class RangeManager
 {
+  /**
+   * @var ColumnFamily
+   */
+  private $_cf;
   private $_cassandraServiceName;
   private $_columnFamily;
-  private $_cf;
   private $_processor;
   private $_minToken;
   private $_maxToken;
   private $_readConsistencyLevel;
+  private $_cassReceiveTimeout;
+  private $_cassSendTimeout;
 
   private $_scriptProgress;
   private $_instanceName;
   private $_hostname;
-
   private $_statsReporter;
-
   private $_batchSizeTuner;
 
   public function __construct(
-    $cassandraServiceName, $columnFamily, $readConsistency,
+    $cassandraServiceName, $columnFamily,
     ItemProcessor $processor, $instanceName = "", $displayReport = true
   )
   {
     $this->_cassandraServiceName = $cassandraServiceName;
     $this->_columnFamily         = $columnFamily;
-    $this->_readConsistencyLevel     = $readConsistency;
     $this->_cf                   = null;
     $this->_processor            = $processor;
     $this->_scriptProgress       = new ScriptProgress();
     $this->_instanceName         = $instanceName;
     $this->_hostname             = gethostname();
+    $this->_readConsistencyLevel = ConsistencyLevel::QUORUM;
+    $this->_cassSendTimeout      = 2000;
+    $this->_cassReceiveTimeout   = 2000;
     if($this->_instanceName != "")
     {
       $this->_hostname .= "-" . $this->_instanceName;
@@ -120,11 +125,35 @@ class RangeManager
       }
 
       $this->_cf = $cass->cf($this->_columnFamily, false);
-      $this->_cf->setReadConsistencyLevel($this->_readConsistencyLevel);
+      $this->setReadConsistencyLevel($this->_readConsistencyLevel);
+      $this->setCassTimeout(
+        $this->_cassSendTimeout,
+        $this->_cassReceiveTimeout
+      );
 
       EventManager::trigger(Events::CASS_CONNECT_END);
     }
     return $this->_cf;
+  }
+
+  public function setCassTimeout($sendTimeout, $receiveTimeout)
+  {
+    $this->_cassSendTimeout = $sendTimeout;
+    $this->_cassReceiveTimeout = $receiveTimeout;
+    if($this->_cf)
+    {
+      $this->_cf->connection()->setReceiveTimeout($this->_cassReceiveTimeout);
+      $this->_cf->connection()->setSendTimeout($this->_cassSendTimeout);
+    }
+  }
+
+  public function setReadConsistencyLevel($consistencyLevel)
+  {
+    $this->_readConsistencyLevel = $consistencyLevel;
+    if($this->_cf)
+    {
+      $this->_cf->setReadConsistencyLevel($consistencyLevel);
+    }
   }
 
   public function buildRanges($numRanges)
