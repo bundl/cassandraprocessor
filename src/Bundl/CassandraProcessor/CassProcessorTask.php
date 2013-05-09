@@ -15,15 +15,16 @@ use Cubex\Cli\Shell;
 use Cubex\Data\Validator\Validator;
 use Cubex\Facade\Cassandra;
 use cassandra\ConsistencyLevel;
+use Psr\Log\LogLevel;
 
 abstract class CassProcessorTask extends CliCommand
 {
-  protected $_autoLog = false;
   protected $_instanceName = "";
   protected $_enableDebug = false;
   protected $_displayReport = true;
   private $_rangeManager = null;
   private $_pidFile = null;
+  protected $_defaultLogLevel = LogLevel::INFO;
 
   protected function _argumentsList()
   {
@@ -79,12 +80,23 @@ abstract class CassProcessorTask extends CliCommand
       new CliArgument(
         'reset-failed',
         'Reset all failed ranges'
-      )
+      ),
+      new CliArgument(
+        'dry-run',
+        'Run in dry run mode, no writing or deleting will be performed'
+      ),
     ];
   }
 
   public function init()
   {
+    $this->_instanceName = $this->argumentValue('instance', '');
+    $this->_logger->setInstanceName($this->_instanceName);
+
+    if($this->argumentIsSet('dry-run'))
+    {
+      ProcessorOptions::setDryRun(true);
+    }
   }
 
   public function execute()
@@ -98,7 +110,6 @@ abstract class CassProcessorTask extends CliCommand
       $debugger->init();
     }
 
-    $this->_instanceName = $this->argumentValue('instance', '');
     if($this->argumentValue('no-report'))
     {
       $this->_displayReport = false;
@@ -159,10 +170,6 @@ abstract class CassProcessorTask extends CliCommand
     else
     {
       // Default run mode - process the ranges...
-      $this->_logger  = new CliLogger(
-        $this->_getEchoLevel(), $this->_getLogLevel(),
-        "", $this->_instanceName
-      );
       $this->_pidFile = new PidFile("", $this->_instanceName);
       $this->_initProcessingRun();
       $this->_getRangeManager()->processAll();
@@ -282,18 +289,4 @@ abstract class CassProcessorTask extends CliCommand
    * @return string
    */
   protected abstract function _getColumnFamilyName();
-
-  /**
-   * Get the logging level (should be one of the LogLevel constants)
-   *
-   * @return string
-   */
-  protected abstract function _getLogLevel();
-
-  /**
-   * Get the console output log level (should be one of the LogLevel constants)
-   *
-   * @return string
-   */
-  protected abstract function _getEchoLevel();
 }
