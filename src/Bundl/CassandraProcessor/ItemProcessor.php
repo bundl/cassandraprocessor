@@ -35,25 +35,35 @@ abstract class ItemProcessor
   public abstract function processItem($key, $itemData);
 
   /**
-   * List of columns required from the Cassandra items. null = all columns, array() = none (just keys)
+   * List of columns required from the Cassandra items.
+   * null = all columns, array() = none (just keys)
    *
    * @return null|array
    */
-  public abstract function requiredColumns();
+  public function requiredColumns()
+  {
+    return null;
+  }
 
   /**
    * Return true to stop on all errors
    *
    * @return bool
    */
-  public abstract function stopOnErrors();
+  public function stopOnErrors()
+  {
+    return false;
+  }
 
   /**
    * Return true to save progress after each batch
    *
    * @return bool
    */
-  public abstract function shouldSaveProgress();
+  public function shouldSaveProgress()
+  {
+    return false;
+  }
 
   /**
    * Return the min/max size of the batches to process
