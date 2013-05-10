@@ -9,51 +9,89 @@ use Bundl\CassandraProcessor\Events;
 use Cubex\Events\EventManager;
 use Cubex\Mapper\Database\RecordMapper;
 
+/**
+ * Class TokenRange
+ * @package Bundl\CassandraProcessor\Mappers
+ *
+ * @index processing,hostname
+ * @index processing,processed
+ * @index randomKey
+ * @unique startToken
+ */
 class TokenRange extends RecordMapper
 {
-  public $startToken;
-  public $endToken;
   /**
-   * @datatype string
+   * @datatype varchar(128)
+   * @notnull
    */
-  public $firstKey;
+  public $startToken = '';
   /**
-   * @datatype string
+   * @datatype varchar(128)
+   * @notnull
    */
-  public $lastKey;
+  public $endToken = '';
   /**
-   * @datatype int
+   * @datatype varchar(255)
+   * @notnull
+   */
+  public $firstKey = '';
+  /**
+   * @datatype varchar(255)
+   * @notnull
+   */
+  public $lastKey = '';
+  /**
+   * @datatype bool
+   * @notnull
    */
   public $processing = 0;
   /**
-   * @datatype int
+   * @datatype bool
+   * @notnull
    */
   public $processed = 0;
   /**
-   * @datatype int
+   * @datatype bool
+   * @notnull
    */
   public $failed = 0;
   /**
-   * @datatype int
+   * @datatype bigint
+   * @unsigned
+   * @notnull
    */
   public $processingTime = 0;
   /**
-   * @datatype int
+   * @datatype bigint
+   * @unsigned
+   * @notnull
    */
   public $totalItems = 0;
   /**
-   * @datatype int
+   * @datatype bigint
+   * @unsigned
+   * @notnull
    */
   public $processedItems = 0;
   /**
-   * @datatype int
+   * @datatype bigint
+   * @unsigned
+   * @notnull
    */
   public $errorCount = 0;
   /**
    * @datatype int
+   * @unsigned
+   * @notnull
    */
   public $randomKey = 0;
+  /**
+   * @datatype varchar(1024)
+   */
   public $error;
+  /**
+   * @datatype varchar(255)
+   */
   public $hostname;
 
   protected $_schemaType = self::SCHEMA_CAMELCASE;
