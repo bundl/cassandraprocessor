@@ -11,6 +11,8 @@ use Cubex\Events\EventManager;
 use Cubex\Facade\Cassandra;
 use Cubex\KvStore\Cassandra\CassandraException;
 use Cubex\KvStore\Cassandra\ColumnFamily;
+use Cubex\KvStore\Cassandra\DataType\BytesType;
+use Cubex\KvStore\Cassandra\DataType\CassandraType;
 use Cubex\Log\Log;
 use Cubex\Mapper\Database\RecordCollection;
 use Cubex\Mapper\Database\SearchObject;
@@ -32,6 +34,7 @@ class RangeManager
   private $_readConsistencyLevel;
   private $_cassReceiveTimeout;
   private $_cassSendTimeout;
+  private $_columnDataType;
 
   private $_scriptProgress;
   private $_instanceName;
@@ -54,6 +57,7 @@ class RangeManager
     $this->_readConsistencyLevel = ConsistencyLevel::QUORUM;
     $this->_cassSendTimeout      = 2000;
     $this->_cassReceiveTimeout   = 2000;
+    $this->_columnDataType       = new BytesType();
     if($this->_instanceName != "")
     {
       $this->_hostname .= "-" . $this->_instanceName;
@@ -125,6 +129,7 @@ class RangeManager
       }
 
       $this->_cf = $cass->cf($this->_columnFamily, false);
+      $this->setColumnDataType($this->_columnDataType);
       $this->setReadConsistencyLevel($this->_readConsistencyLevel);
       $this->setCassTimeout(
         $this->_cassSendTimeout,
@@ -134,6 +139,15 @@ class RangeManager
       EventManager::trigger(Events::CASS_CONNECT_END);
     }
     return $this->_cf;
+  }
+
+  public function setColumnDataType(CassandraType $type)
+  {
+    $this->_columnDataType = $type;
+    if($this->_cf)
+    {
+      $this->_cf->setColumnDataType($type);
+    }
   }
 
   public function setCassTimeout($sendTimeout, $receiveTimeout)
