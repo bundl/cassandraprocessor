@@ -6,6 +6,7 @@
 namespace Bundl\CassandraProcessor;
 
 use Bundl\CassandraProcessor\Mappers\TokenRange;
+use Cubex\Cli\CliLogger;
 use Cubex\Cli\Shell;
 use Cubex\Events\EventManager;
 use Cubex\Helpers\DateTimeHelper;
@@ -117,11 +118,7 @@ class StatsReporter
     }
 
     // Store the pretty report in a file
-    $logsDir = realpath(dirname(WEB_ROOT)) . DS . 'logs';
-    if($this->_instanceName != "")
-    {
-      $logsDir .= DS . $this->_instanceName;
-    }
+    $logsDir = CliLogger::getDefaultLogPath($this->_instanceName);
     $reportFile = $logsDir . DS . 'report.txt';
     file_put_contents($reportFile, $prettyReport);
 
