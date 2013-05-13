@@ -60,7 +60,7 @@ class RangeManager
     $this->_columnDataType       = new BytesType();
     if($this->_instanceName != "")
     {
-      $this->_hostname .= "-" . $this->_instanceName;
+      $this->_hostname .= "|" . $this->_instanceName;
     }
 
     $this->_processor->sourceColumnFamily = $this->_getCF();
