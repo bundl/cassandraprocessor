@@ -46,17 +46,14 @@ class StatsReporter
     $rangeErrors, $rangeStartTime, $lastKey
   )
   {
-    static $lastRangeTotal = 0;
     static $lastReportTime = 0;
 
     $now = microtime(true);
 
-    $batchTotal = $rangeTotal - $lastRangeTotal;
     if($lastReportTime == 0)
     {
       $lastReportTime = $rangeStartTime;
     }
-    $batchDuration = $now - $lastReportTime;
 
     $totalDuration = $now - $this->_startTime;
     if($totalDuration > 0)
@@ -67,9 +64,11 @@ class StatsReporter
     {
       $averageRate = 0;
     }
-    if($batchDuration > 0)
+
+    $rangeDuration = $now - $rangeStartTime;
+    if($rangeDuration > 0)
     {
-      $currentRate = round($batchTotal / $batchDuration);
+      $currentRate = round($rangeTotal / $rangeDuration);
     }
     else
     {
