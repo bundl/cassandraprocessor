@@ -707,11 +707,13 @@ class RangeManager
       $coll->loadWhere(['failed' => 1])->setLimit(0, $limit);
 
       $table = new TextTable();
-      $table->setColumnHeaders('id', 'hostname', 'error');
+      $table->setColumnHeaders('id', 'updatedAt', 'hostname', 'error');
 
       foreach($coll as $range)
       {
-        $table->appendRow([$range->id, $range->hostname, $range->error]);
+        $table->appendRow(
+          [$range->id, $range->updatedAt, $range->hostname, $range->error]
+        );
       }
       echo "Displaying " . $coll->count() . " of " . $total . " failed ranges\n";
       echo $table;
