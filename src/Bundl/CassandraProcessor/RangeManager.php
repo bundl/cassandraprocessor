@@ -7,6 +7,7 @@ namespace Bundl\CassandraProcessor;
 
 use Bundl\CassandraProcessor\Mappers\TokenRange;
 use Cubex\Cli\Shell;
+use Cubex\Database\IDatabaseService;
 use Cubex\Events\EventManager;
 use Cubex\Facade\Cassandra;
 use Cubex\KvStore\Cassandra\CassandraException;
@@ -692,30 +693,25 @@ class RangeManager
 
   public function listFailedRanges($limit)
   {
-    $db = TokenRange::conn();
-    $total = $db->getField(
-      ParseQuery::parse(
-        $db,
-        'SELECT COUNT(*) FROM %T WHERE failed=1',
-        TokenRange::tableName()
-      )
+    $result = $this->_multiGetRows(
+      TokenRange::conn(),
+      "SELECT id, updatedAt, hostname, error FROM %T WHERE failed=1",
+      $this->listAllRangeTables(),
+      $limit
     );
 
-    if($total > 0)
+    if(count($result) > 0)
     {
-      $coll = new RecordCollection(new TokenRange());
-      $coll->loadWhere(['failed' => 1])->setLimit(0, $limit);
-
       $table = new TextTable();
       $table->setColumnHeaders('id', 'updatedAt', 'hostname', 'error');
 
-      foreach($coll as $range)
+      foreach($result as $range)
       {
         $table->appendRow(
           [$range->id, $range->updatedAt, $range->hostname, $range->error]
         );
       }
-      echo "Displaying " . $coll->count() . " of " . $total . " failed ranges\n";
+      //echo "Displaying " . $coll->count() . " of " . $total . " failed ranges\n";
       echo $table;
     }
     else
@@ -726,20 +722,92 @@ class RangeManager
 
   public function resetFailedRanges()
   {
-    $db = TokenRange::conn();
-    $tableName = TokenRange::tableName();
-
     echo "Resetting failed ranges...\n";
 
-    $db->query(
-      ParseQuery::parse(
-        $db,
-        "UPDATE %T SET processed=0, failed=0, hostname='' WHERE failed=1",
-        $tableName
-      )
+    $affectedRows = $this->_multiQuery(
+      TokenRange::conn(),
+      "UPDATE %T SET processed=0, failed=0, hostname='' WHERE failed=1",
+      $this->listAllRangeTables()
     );
 
-    echo "Finished. " . $db->affectedRows() . " ranges were reset.\n";
+    echo "Finished. " . $affectedRows . " ranges were reset.\n";
+  }
+
+  protected function _multiQuery(IDatabaseService $db, $query, $tables)
+  {
+    $affectedRows = 0;
+    foreach($tables as $table)
+    {
+      $db->query(ParseQuery::parse($db, $query, $table));
+      $affectedRows += $db->affectedRows();
+    }
+    return $affectedRows;
+  }
+
+  protected function _multiGetRows(
+    IDatabaseService $db, $query, $tables, $limit = 0
+  )
+  {
+    $result = [];
+    foreach($tables as $table)
+    {
+      $res = $db->getRows(ParseQuery::parse($db, $query, $table));
+      $result = array_merge($result, $res);
+      if(($limit > 0) && (count($result) >= $limit))
+      {
+        break;
+      }
+    }
+    return $result;
+  }
+
+
+
+  /**
+   * Get a list of all Token Ranges tables that could be used by this script.
+   * In most cases this will only return 1 table but if the script is using
+   * sharded tables then this will return all of them.
+   *
+   * @return string[]
+   */
+  public function listAllRangeTables()
+  {
+    $tables = [];
+
+    $db = TokenRange::conn();
+    $tableName = TokenRange::tableName();
+    if(strpos($tableName, '_') !== false)
+    {
+      $parts = explode("_", $tableName);
+      $last = array_pop($parts);
+      if(is_numeric($last))
+      {
+        $tableBase = implode("_", $parts) . '_';
+
+        $i = 1;
+        while(true)
+        {
+          $table = $tableBase . $i;
+          $res = $db->numRows("SHOW TABLES LIKE '" . $table . "'");
+          if($res > 0)
+          {
+            $tables[] = $table;
+          }
+          else
+          {
+            break;
+          }
+          $i++;
+        }
+      }
+    }
+
+    if(count($tables) == 0)
+    {
+      $tables = [$tableName];
+    }
+
+    return $tables;
   }
 }
 
