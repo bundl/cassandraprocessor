@@ -37,7 +37,14 @@ class BatchSizeTuner
 
   public function setBatchSizeLimitsArr($sizeArr)
   {
-    $this->setBatchSizeLimits($sizeArr['min'], $sizeArr['max']);
+    if(is_integer($sizeArr))
+    {
+      $this->setBatchSizeLimits($sizeArr, $sizeArr);
+    }
+    else
+    {
+      $this->setBatchSizeLimits($sizeArr['min'], $sizeArr['max']);
+    }
   }
 
   public function setBatchSizeLimits($minSize, $maxSize)
