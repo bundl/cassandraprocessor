@@ -17,6 +17,7 @@ use Cubex\Mapper\Database\RecordMapper;
  * @index processing,processed
  * @index randomKey
  * @unique startToken
+ * @engine InnoDB
  */
 class TokenRange extends RecordMapper
 {
