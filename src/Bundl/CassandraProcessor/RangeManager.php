@@ -237,13 +237,15 @@ class RangeManager
 
   public function resetRanges()
   {
-    $tableName = (new TokenRange())->getTableName();
-    $conn      = TokenRange::conn();
-    $conn->query(
-      "UPDATE `" . $tableName . "` SET firstKey='', lastKey='', processing=0," .
+    $count = $this->_multiQuery(
+      TokenRange::conn(),
+      "UPDATE %T SET firstKey='', lastKey='', processing=0," .
       "hostname=NULL, processed=0, failed=0, processingTime=0, " .
-      "totalItems=0, processedItems=0, errorCount=0, error=NULL"
+      "totalItems=0, processedItems=0, errorCount=0, error=NULL",
+      $this->listAllRangeTables()
     );
+
+    echo "Finished. Reset " . $count . " ranges\n";
   }
 
   public function resetRange($rangeId)
