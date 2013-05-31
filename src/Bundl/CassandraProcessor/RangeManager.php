@@ -755,8 +755,13 @@ class RangeManager
     {
       $res = $db->getRows(ParseQuery::parse($db, $query, $table));
       $result = array_merge($result, $res);
-      if(($limit > 0) && (count($result) >= $limit))
+      $numResults = count($result);
+      if(($limit > 0) && ($numResults >= $limit))
       {
+        if($numResults > $limit)
+        {
+          $result = array_slice($result, 0, $limit);
+        }
         break;
       }
     }
