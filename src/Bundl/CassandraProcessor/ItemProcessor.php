@@ -8,7 +8,7 @@ namespace Bundl\CassandraProcessor;
 abstract class ItemProcessor
 {
   /**
-   * @var \Cubex\KvStore\Cassandra\ColumnFamily
+   * @var \Cubex\Cassandra\ColumnFamily
    */
   public $sourceColumnFamily;
 
