@@ -35,6 +35,10 @@ abstract class CassProcessorTask extends CliCommand
         'multiple instances of the same script on one machine.',
         "i", CliArgument::VALUE_REQUIRED, 'name'
       ),
+      new CliArgument(
+        'dry-run',
+        'Run in dry run mode, no writing or deleting will be performed'
+      ),
       new CliArgument('reset-ranges', 'Reset the status of all ranges'),
       new CliArgument(
         'reset-range',
@@ -82,8 +86,8 @@ abstract class CassProcessorTask extends CliCommand
         'Reset all failed ranges'
       ),
       new CliArgument(
-        'dry-run',
-        'Run in dry run mode, no writing or deleting will be performed'
+        'reset-processing',
+        'Reset all ranges that are flagged as processing. USE WITH CARE.'
       ),
     ];
   }
@@ -117,12 +121,13 @@ abstract class CassProcessorTask extends CliCommand
 
     // Run in the appropriate mode
 
-    $resetRangeId = $this->argumentValue('reset-range');
-    $buildRanges  = $this->argumentValue('build-ranges');
-    $countRange   = $this->argumentValue('count-range');
-    $getKeys      = $this->argumentValue('get-keys');
-    $resetFailed  = $this->argumentIsSet('reset-failed');
-    $listFailed   = $this->argumentIsSet('list-failed') ?
+    $resetProcessing = $this->argumentValue('reset-processing');
+    $resetRangeId    = $this->argumentValue('reset-range');
+    $buildRanges     = $this->argumentValue('build-ranges');
+    $countRange      = $this->argumentValue('count-range');
+    $getKeys         = $this->argumentValue('get-keys');
+    $resetFailed     = $this->argumentIsSet('reset-failed');
+    $listFailed      = $this->argumentIsSet('list-failed') ?
       $this->argumentValue('list-failed') : false;
     if($resetRangeId)
     {
@@ -166,6 +171,10 @@ abstract class CassProcessorTask extends CliCommand
     else if($resetFailed)
     {
       $this->_getRangeManager()->resetFailedRanges();
+    }
+    else if($resetProcessing)
+    {
+      $this->_getRangeManager()->resetProcessingRanges();
     }
     else
     {

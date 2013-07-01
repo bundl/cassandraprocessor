@@ -735,6 +735,20 @@ class RangeManager
     echo "Finished. " . $affectedRows . " ranges were reset.\n";
   }
 
+  public function resetProcessingRanges()
+  {
+    echo "Resetting processing ranges...\n";
+
+    $affectedRows = $this->_multiQuery(
+      TokenRange::conn(),
+      "UPDATE %T SET processing=0, processed=0, failed=0, hostname='' " .
+      "WHERE processing=1",
+      $this->listAllRangeTables()
+    );
+
+    echo "Finished. " . $affectedRows . " ranges were reset.\n";
+  }
+
   protected function _multiQuery(IDatabaseService $db, $query, $tables)
   {
     $affectedRows = 0;
