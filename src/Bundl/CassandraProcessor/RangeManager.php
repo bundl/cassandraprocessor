@@ -518,6 +518,7 @@ class RangeManager
     $range->errorCount     = 0;
     $range->randomKey      = rand(0, 10000);
     $range->hostname       = "";
+    $range->requeueCount   = $range->requeueCount + 1;
     $range->saveChanges();
     EventManager::trigger(Events::REQUEUE_RANGE_END);
   }

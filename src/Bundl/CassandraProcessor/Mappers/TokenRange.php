@@ -94,6 +94,12 @@ class TokenRange extends RecordMapper
    * @datatype varchar(255)
    */
   public $hostname;
+  /**
+   * @datatype int
+   * @unsigned
+   * @notnull
+   */
+  public $requeueCount = 0;
 
   protected $_schemaType = self::SCHEMA_CAMELCASE;
 
