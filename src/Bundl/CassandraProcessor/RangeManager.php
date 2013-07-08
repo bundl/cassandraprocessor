@@ -180,10 +180,13 @@ class RangeManager
     // Delete all ranges from the DB
     $db = TokenRange::conn();
     $tableName = (new TokenRange())->getTableName();
-    $db->query(ParseQuery::parse($db, 'DELETE FROM %T', $tableName));
-    $db->query(
-      ParseQuery::parse($db, 'ALTER TABLE %T AUTO_INCREMENT=0', $tableName)
-    );
+    if((new TokenRange())->tableExists())
+    {
+      $db->query(ParseQuery::parse($db, 'DELETE FROM %T', $tableName));
+      $db->query(
+        ParseQuery::parse($db, 'ALTER TABLE %T AUTO_INCREMENT=0', $tableName)
+      );
+    }
 
     $interval = bcdiv(bcsub($lastToken, $firstToken), $numRanges);
 
