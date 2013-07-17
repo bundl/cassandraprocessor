@@ -744,7 +744,7 @@ class RangeManager
 
     $affectedRows = $this->_multiQuery(
       TokenRange::conn(),
-      "UPDATE %T SET processed=0, failed=0, hostname='' WHERE failed=1",
+      "UPDATE %T SET processed=0, failed=0, hostname='', requeueCount=0 WHERE failed=1",
       $this->listAllRangeTables()
     );
 
