@@ -23,6 +23,8 @@ use cassandra\ConsistencyLevel;
 
 class RangeManager
 {
+  const MAX_REQUEUES = 50;
+
   /**
    * @var ColumnFamily
    */
@@ -510,20 +512,30 @@ class RangeManager
    */
   private function _requeueRange(TokenRange $range)
   {
-    EventManager::trigger(Events::REQUEUE_RANGE_START);
-    Log::info('Re-queueing range ' . $range->id() . ' to process later');
-
     $range->processing     = 0;
-    $range->processed      = 0;
     $range->processingTime = 0;
-    $range->totalItems     = 0;
-    $range->processedItems = 0;
-    $range->errorCount     = 0;
-    $range->randomKey      = rand(0, 10000);
-    $range->hostname       = "";
-    $range->requeueCount   = $range->requeueCount + 1;
-    $range->saveChanges();
-    EventManager::trigger(Events::REQUEUE_RANGE_END);
+
+    if($range->requeueCount > self::MAX_REQUEUES)
+    {
+      $range->failed    = 1;
+      $range->processed = 1;
+      $range->saveChanges();
+    }
+    else
+    {
+      EventManager::trigger(Events::REQUEUE_RANGE_START);
+      Log::info('Re-queueing range ' . $range->id() . ' to process later');
+
+      $range->processed      = 0;
+      $range->totalItems     = 0;
+      $range->processedItems = 0;
+      $range->errorCount     = 0;
+      $range->randomKey      = rand(0, 10000);
+      $range->hostname       = "";
+      $range->requeueCount   = $range->requeueCount + 1;
+      $range->saveChanges();
+      EventManager::trigger(Events::REQUEUE_RANGE_END);
+    }
   }
 
   public function processRange(TokenRange $range)
