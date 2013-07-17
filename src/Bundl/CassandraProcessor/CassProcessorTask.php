@@ -248,6 +248,11 @@ abstract class CassProcessorTask extends CliCommand
 
   private function _getKeys($startToken, $endToken, $count)
   {
+    $count = (int)$count;
+    if($count < 1)
+    {
+      $count = 1;
+    }
     $cass = Cassandra::getAccessor($this->_getCassServiceName());
     $cf   = $cass->cf($this->_getColumnFamilyName(), false);
 
