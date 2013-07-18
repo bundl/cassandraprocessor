@@ -281,11 +281,23 @@ class RangeManager
    */
   public function refreshKeysForAllRanges()
   {
-    $ranges = (new RecordCollection(new TokenRange()))->loadAll();
-    $total = count($ranges);
-    $processed = 0;
-    foreach($ranges as $range)
+    $result = $this->_multiGetRows(
+      TokenRange::conn(),
+      'SELECT id FROM %T',
+      $this->listAllRangeTables()
+    );
+
+    $ids = [];
+    foreach($result as $row)
     {
+      $ids[] = $row->id;
+    }
+
+    $total = count($ids);
+    $processed = 0;
+    foreach($ids as $id)
+    {
+      $range = new TokenRange($id);
       $this->refreshKeysForRange($range);
       $processed++;
 
