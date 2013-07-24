@@ -35,6 +35,7 @@ class RangeManager
   private $_minToken;
   private $_maxToken;
   private $_readConsistencyLevel;
+  private $_writeConsistencyLevel;
   private $_cassReceiveTimeout;
   private $_cassSendTimeout;
   private $_columnDataType;
@@ -58,6 +59,7 @@ class RangeManager
     $this->_instanceName         = $instanceName;
     $this->_hostname             = gethostname();
     $this->_readConsistencyLevel = ConsistencyLevel::QUORUM;
+    $this->_writeConsistencyLevel = ConsistencyLevel::QUORUM;
     $this->_cassSendTimeout      = 2000;
     $this->_cassReceiveTimeout   = 2000;
     $this->_columnDataType       = new BytesType();
@@ -134,6 +136,7 @@ class RangeManager
       $this->_cf = $cass->cf($this->_columnFamily, false);
       $this->setColumnDataType($this->_columnDataType);
       $this->setReadConsistencyLevel($this->_readConsistencyLevel);
+      $this->setWriteConsistencyLevel($this->_writeConsistencyLevel);
       $this->setCassTimeout(
         $this->_cassSendTimeout,
         $this->_cassReceiveTimeout
@@ -170,6 +173,15 @@ class RangeManager
     if($this->_cf)
     {
       $this->_cf->setReadConsistencyLevel($consistencyLevel);
+    }
+  }
+
+  public function setWriteConsistencyLevel($consistencyLevel)
+  {
+    $this->_writeConsistencyLevel = $consistencyLevel;
+    if($this->_cf)
+    {
+      $this->_cf->setWriteConsistencyLevel($consistencyLevel);
     }
   }
 
