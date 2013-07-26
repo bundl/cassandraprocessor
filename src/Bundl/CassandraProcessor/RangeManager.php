@@ -68,10 +68,8 @@ class RangeManager
       $this->_hostname .= "|" . $this->_instanceName;
     }
 
-    $this->_processor->sourceColumnFamily = $this->_getCF();
-
-    // Work out the max token for this CF
-    $this->_calcMinMaxTokens();
+    $this->_minToken = null;
+    $this->_maxToken = null;
 
     $this->_statsReporter = new StatsReporter($this->_instanceName);
     $this->_statsReporter->displayPrettyReport = $displayReport;
@@ -100,6 +98,23 @@ class RangeManager
     }
   }
 
+  private function _minToken()
+  {
+    if($this->_minToken === null)
+    {
+      $this->_calcMinMaxTokens();
+    }
+    return $this->_minToken;
+  }
+
+  private function _maxToken()
+  {
+    if($this->_maxToken === null)
+    {
+      $this->_calcMinMaxTokens();
+    }
+    return $this->_maxToken;
+  }
 
   private function _getCF($refresh = false)
   {
@@ -141,6 +156,7 @@ class RangeManager
         $this->_cassSendTimeout,
         $this->_cassReceiveTimeout
       );
+      $this->_processor->sourceColumnFamily = $this->_cf;
 
       EventManager::trigger(Events::CASS_CONNECT_END);
     }
@@ -188,8 +204,8 @@ class RangeManager
   public function buildRanges($numRanges)
   {
     echo "Creating ranges... ";
-    $firstToken = $this->_minToken;
-    $lastToken  = $this->_maxToken;
+    $firstToken = $this->_minToken();
+    $lastToken  = $this->_maxToken();
 
     // Delete all ranges from the DB
     $db = TokenRange::conn();
@@ -336,11 +352,11 @@ class RangeManager
 
     // get the first and last keys in the CF
     $firstItemInCF = $this->_getTokensWithRetry(
-      $cf, $this->_minToken, $this->_minToken, 1
+      $cf, $this->_minToken(), $this->_minToken(), 1
     );
     $firstKeyInCF = key($firstItemInCF);
     $lastItemInCF = $this->_getTokensWithRetry(
-      $cf, $this->_maxToken, $this->_maxToken, 1
+      $cf, $this->_maxToken(), $this->_maxToken(), 1
     );
     $lastKeyInCF = key($lastItemInCF);
 

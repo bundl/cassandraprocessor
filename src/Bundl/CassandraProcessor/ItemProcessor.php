@@ -10,7 +10,7 @@ abstract class ItemProcessor
   /**
    * @var \Cubex\Cassandra\ColumnFamily
    */
-  public $sourceColumnFamily;
+  public $sourceColumnFamily = null;
 
   /**
    * @return bool
