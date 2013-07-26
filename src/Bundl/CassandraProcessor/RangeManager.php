@@ -300,6 +300,7 @@ class RangeManager
     $range->processedItems = 0;
     $range->errorCount     = 0;
     $range->error          = null;
+    $range->requeueCount   = 0;
 
     $range->saveChanges();
   }
