@@ -228,7 +228,7 @@ class StatsReporter
       ]
     );
     $t->appendSpacer();
-    $t->appendRow(['Last key processed', $lastKey]);
+    $t->appendRow(['Last key seen', $lastKey]);
 
     ob_start();
     echo $t;
