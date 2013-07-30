@@ -36,6 +36,13 @@ abstract class CassProcessorTask extends CliCommand
         "i", CliArgument::VALUE_REQUIRED, 'name'
       ),
       new CliArgument(
+        'instances',
+        'Launch this many instances of the script. Each instance will be ' .
+        'given the name "instX" where X is the number of the instance.',
+        "", CliArgument::VALUE_REQUIRED, 'count', false, null,
+        Validator::VALIDATE_INT
+      ),
+      new CliArgument(
         'dry-run',
         'Run in dry run mode, no writing or deleting will be performed'
       ),
@@ -129,6 +136,7 @@ abstract class CassProcessorTask extends CliCommand
     $resetFailed     = $this->argumentIsSet('reset-failed');
     $listFailed      = $this->argumentIsSet('list-failed') ?
       $this->argumentValue('list-failed') : false;
+    $instanceCount   = $this->argumentValue('instances', 1);
     if($resetRangeId)
     {
       echo "Resetting range " . $resetRangeId . "...\n";
@@ -179,10 +187,36 @@ abstract class CassProcessorTask extends CliCommand
     else
     {
       // Default run mode - process the ranges...
+      if($instanceCount > 1)
+      {
+        $this->_forkInstances($instanceCount);
+      }
+
       $this->_pidFile = new PidFile("", $this->_instanceName);
       $this->_initProcessingRun();
       $this->_getRangeManager()->processAll();
     }
+  }
+
+  protected function _forkInstances($count)
+  {
+    $firstInstanceName = $this->_instanceName;
+    for($i = 2; $i <= $count; $i++)
+    {
+      $childPid = pcntl_fork();
+      if($childPid == -1)
+      {
+        throw new \Exception('Unable to fork instance ' . $i);
+      }
+      if($childPid == 0)
+      {
+        // Child process
+        $this->_instanceName = 'inst' . $i;
+        $this->_logger->setInstanceName($this->_instanceName);
+        return;
+      }
+    }
+    $this->_instanceName = $firstInstanceName;
   }
 
   /**
