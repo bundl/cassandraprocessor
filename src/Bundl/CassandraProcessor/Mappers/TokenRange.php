@@ -14,8 +14,6 @@ use Cubex\Mapper\Database\RecordMapper;
  * @package Bundl\CassandraProcessor\Mappers
  *
  * @index processing,hostname
- * @index processing,processed
- * @index randomKey
  * @index processing,processed,randomKey
  * @unique startToken
  * @engine InnoDB
