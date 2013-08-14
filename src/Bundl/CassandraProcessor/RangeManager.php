@@ -488,7 +488,7 @@ class RangeManager
       $res = false;
       while(true)
       {
-        $endKey = $startKey + 50;
+        $endKey = $startKey + 100;
 
         $res = $db->query(
           ParseQuery::parse(
@@ -506,7 +506,7 @@ class RangeManager
         {
           break;
         }
-        $startKey += 50;
+        $startKey += 100;
       }
 
       if($res)
