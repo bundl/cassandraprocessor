@@ -484,14 +484,30 @@ class RangeManager
     }
     else
     {
-      $res = $db->query(
-        ParseQuery::parse(
-          $db,
-          "UPDATE %T SET processing=1, hostname=%s " .
-          "WHERE processing=0 AND processed=0 ORDER BY randomKey LIMIT 1",
-          (new TokenRange())->getTableName(), $this->_hostname
-        )
-      );
+      $startKey = 0;
+      $res = false;
+      while(true)
+      {
+        $endKey = $startKey + 50;
+
+        $res = $db->query(
+          ParseQuery::parse(
+            $db,
+            "UPDATE %T SET processing=1, hostname=%s " .
+            "WHERE processing=0 AND processed=0 AND " .
+            "randomKey BETWEEN %d AND %d " .
+            "ORDER BY randomKey LIMIT 1",
+            (new TokenRange())->getTableName(), $this->_hostname,
+            $startKey, $endKey
+          )
+        );
+
+        if(($res && ($db->affectedRows() > 0)) || ($startKey > 10000))
+        {
+          break;
+        }
+        $startKey += 50;
+      }
 
       if($res)
       {
