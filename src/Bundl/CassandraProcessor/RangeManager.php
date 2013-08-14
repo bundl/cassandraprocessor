@@ -272,7 +272,7 @@ class RangeManager
   {
     $count = $this->_multiQuery(
       TokenRange::conn(),
-      "UPDATE %T SET firstKey='', lastKey='', processing=0," .
+      "UPDATE %T SET firstKey='', lastKey='', processing=0, requeueCount=0," .
       "hostname=NULL, processed=0, failed=0, processingTime=0, " .
       "totalItems=0, processedItems=0, errorCount=0, error=NULL",
       $this->listAllRangeTables()
