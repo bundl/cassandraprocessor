@@ -642,7 +642,10 @@ class RangeManager
         {
           try
           {
+            EventManager::trigger(Events::PROCESS_BATCH_START);
             $batchProcessed = $this->_processor->processBatch($items);
+            EventManager::trigger(Events::PROCESS_BATCH_END);
+
             $processedItems += $batchProcessed;
             $totalItems += count($items);
             $this->_statsReporter->processedItems += $batchProcessed;
