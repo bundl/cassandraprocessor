@@ -89,6 +89,16 @@ abstract class CassProcessorTask extends CliCommand
         Validator::VALIDATE_INT
       ),
       new CliArgument(
+        'list-requeued',
+        'List ranges that were requeued within the last "mins" minutes',
+        '',
+        CliArgument::VALUE_OPTIONAL,
+        'mins',
+        false,
+        30,
+        Validator::VALIDATE_INT
+      ),
+      new CliArgument(
         'reset-failed',
         'Reset all failed ranges'
       ),
@@ -136,6 +146,8 @@ abstract class CassProcessorTask extends CliCommand
     $resetFailed     = $this->argumentIsSet('reset-failed');
     $listFailed      = $this->argumentIsSet('list-failed') ?
       $this->argumentValue('list-failed') : false;
+    $listRequeued      = $this->argumentIsSet('list-requeued') ?
+      $this->argumentValue('list-requeued') : false;
     $instanceCount   = $this->argumentValue('instances', 1);
     if($resetRangeId)
     {
@@ -179,6 +191,10 @@ abstract class CassProcessorTask extends CliCommand
     else if($resetFailed)
     {
       $this->_getRangeManager()->resetFailedRanges();
+    }
+    else if($listRequeued)
+    {
+      $this->_getRangeManager()->listRequeuedRanges($listRequeued);
     }
     else if($resetProcessing)
     {

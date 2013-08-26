@@ -361,7 +361,6 @@ class RangeManager
     );
     $lastKeyInCF = key($lastItemInCF);
 
-
     $firstItem = $this->_getTokensWithRetry(
       $cf, $range->startToken, $range->startToken, 1
     );
@@ -397,7 +396,6 @@ class RangeManager
 
     EventManager::trigger(Events::REFRESH_KEYS_END);
   }
-
 
   private function _getTokensWithRetry(
     ColumnFamily &$cf, $startToken, $endToken, $count
@@ -461,7 +459,6 @@ class RangeManager
     EventManager::trigger(Events::GET_KEYS_END);
     return $items;
   }
-
 
   /**
    * @return TokenRange
@@ -557,6 +554,7 @@ class RangeManager
       {
         // Re-queue the range if there was an error getting the keys
         Log::error('Error getting the keys for range ' . $range->id());
+        $range->error = 'Error getting keys for range';
         $this->_requeueRange($range);
       }
     }
@@ -588,7 +586,6 @@ class RangeManager
       $range->processedItems = 0;
       $range->errorCount     = 0;
       $range->randomKey      = rand(0, 10000);
-      $range->hostname       = "";
       $range->requeueCount   = $range->requeueCount + 1;
       $range->saveChanges();
       EventManager::trigger(Events::REQUEUE_RANGE_END);
@@ -736,6 +733,8 @@ class RangeManager
         $e->getTraceAsString()
       );
 
+      $range->error = $msg;
+
       // Check for non-fatal errors (i.e. Cassandra timeouts)
       if(
         ($e instanceof CassandraException)
@@ -751,7 +750,6 @@ class RangeManager
       }
       else
       {
-        $range->error = $msg;
         $range->failed = 1;
       }
     }
@@ -780,17 +778,7 @@ class RangeManager
 
     if(count($result) > 0)
     {
-      $table = new TextTable();
-      $table->setColumnHeaders('id', 'updatedAt', 'hostname', 'error');
-
-      foreach($result as $range)
-      {
-        $table->appendRow(
-          [$range->id, $range->updatedAt, $range->hostname, $range->error]
-        );
-      }
-      //echo "Displaying " . $coll->count() . " of " . $total . " failed ranges\n";
-      echo $table;
+      $this->_displayRangeList($result);
     }
     else
     {
@@ -809,6 +797,49 @@ class RangeManager
     );
 
     echo "Finished. " . $affectedRows . " ranges were reset.\n";
+  }
+
+  /**
+   * List the ranges that were requeued within the last $mins minutes
+   *
+   * @param int $mins
+   */
+  public function listRequeuedRanges($mins = 30)
+  {
+    $since = date('Y-m-d H:i:s', time() - ($mins * 60));
+
+    $result = $this->_multiGetRows(
+      TokenRange::conn(),
+      "SELECT id, updatedAt, hostname, error FROM %T " .
+      "WHERE requeueCount>0 AND processed=0 AND failed=0 AND updatedAt >= '" . $since . "'",
+      $this->listAllRangeTables()
+    );
+
+    if(count($result) > 0)
+    {
+      $this->_displayRangeList($result);
+    }
+    else
+    {
+      echo "No requeued ranges were found.\n";
+    }
+  }
+
+  /**
+   * @param TokenRange[] $ranges
+   */
+  private function _displayRangeList(array $ranges)
+  {
+    $table = new TextTable();
+    $table->setColumnHeaders('id', 'updatedAt', 'hostname', 'error');
+
+    foreach($ranges as $range)
+    {
+      $table->appendRow(
+        [$range->id, $range->updatedAt, $range->hostname, $range->error]
+      );
+    }
+    echo $table;
   }
 
   public function resetProcessingRanges()
@@ -857,8 +888,6 @@ class RangeManager
     }
     return $result;
   }
-
-
 
   /**
    * Get a list of all Token Ranges tables that could be used by this script.
