@@ -116,6 +116,11 @@ class RangeManager
     return $this->_maxToken;
   }
 
+  public function getCF()
+  {
+    return $this->_getCF();
+  }
+
   private function _getCF($refresh = false)
   {
     if($refresh || (! $this->_cf))
