@@ -99,6 +99,10 @@ class TokenRange extends RecordMapper
    * @notnull
    */
   public $requeueCount = 0;
+  /**
+   * @datatype text
+   */
+  public $rangeData = '';
 
   protected $_schemaType = self::SCHEMA_CAMELCASE;
 

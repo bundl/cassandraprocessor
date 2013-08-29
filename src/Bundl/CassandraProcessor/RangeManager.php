@@ -610,6 +610,7 @@ class RangeManager
     $errors         = 0;
     $rangeStartTime = microtime(true);
     $okToSave       = true;
+    $this->_processor->resetRangeData();
     try
     {
       $cf   = $this->_getCF();
@@ -722,6 +723,8 @@ class RangeManager
         );
       }
 
+      $rangeData = $this->_processor->getRangeData();
+      $range->rangeData = $rangeData ? json_encode($rangeData) : '';
       $range->failed = $errors > 0 ? 1 : 0;
       $range->error  = "";
     }

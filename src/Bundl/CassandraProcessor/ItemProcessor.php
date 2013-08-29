@@ -13,6 +13,11 @@ abstract class ItemProcessor
   public $sourceColumnFamily = null;
 
   /**
+   * @var mixed
+   */
+  protected $_rangeData = null;
+
+  /**
    * @return bool
    */
   public abstract function supportsBatchProcessing();
@@ -73,5 +78,33 @@ abstract class ItemProcessor
   public function getBatchSize()
   {
     return array('min' => 50, 'max' => 250);
+  }
+
+  /**
+   * Reset the current range data at the start of a new range
+   */
+  public function resetRangeData()
+  {
+    $this->_rangeData = null;
+  }
+
+  /**
+   * Get the current range data
+   *
+   * @return mixed
+   */
+  public function getRangeData()
+  {
+    return $this->_rangeData;
+  }
+
+  /**
+   * Set the current range data
+   *
+   * @param mixed $data
+   */
+  public function setRangeData($data)
+  {
+    $this->_rangeData = $data;
   }
 }
