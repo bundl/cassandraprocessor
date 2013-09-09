@@ -222,12 +222,19 @@ class RangeManager
         ParseQuery::parse($db, 'ALTER TABLE %T AUTO_INCREMENT=0', $tableName)
       );
     }
+    else
+    {
+      (new TokenRange())->createTable();
+    }
 
     $interval = bcdiv(bcsub($lastToken, $firstToken), $numRanges);
 
+    $batchSize = 1000;
     $numCreated = 0;
     $prevToken  = "";
     $lastRange = null;
+    $batchCount = 0;
+    $batchData = [];
     for(
       $tok = $firstToken;
       bccomp($tok, $lastToken) < 1;
@@ -240,17 +247,33 @@ class RangeManager
         $range->startToken = $prevToken;
         $range->endToken   = $tok;
         $range->randomKey  = rand(1, 10000);
-        $range->saveChanges();
+        $batchData[] = $range;
         $lastRange = $range;
 
+        $batchCount++;
         $numCreated++;
       }
+
+      if($batchCount >= $batchSize)
+      {
+        $this->_insertMultipleRanges($batchData);
+        $batchData = [];
+        $batchCount = 0;
+
+        Shell::clearLine();
+        echo "Creating ranges... " .
+          number_format($numCreated) . " / " . number_format($numRanges);
+      }
+
+      $prevToken = $tok;
+    }
+    if(count($batchData) > 0)
+    {
+      $this->_insertMultipleRanges($batchData);
 
       Shell::clearLine();
       echo "Creating ranges... " .
         number_format($numCreated) . " / " . number_format($numRanges);
-
-      $prevToken = $tok;
     }
 
     // Catch left over tokens and add them to the last range
@@ -258,7 +281,8 @@ class RangeManager
     {
       if($lastRange)
       {
-        $range = $lastRange;
+        $range = (new RecordCollection(new TokenRange()))
+          ->loadOneWhere(['startToken' => $lastRange->startToken]);
       }
       else
       {
@@ -271,6 +295,38 @@ class RangeManager
     }
 
     echo "\nFinished creating ranges.\n";
+  }
+
+  /**
+   * @param TokenRange[] $ranges
+   */
+  private function _insertMultipleRanges($ranges)
+  {
+    $db = TokenRange::conn();
+    $tableName = (new TokenRange())->getTableName();
+
+    $query = ParseQuery::parse(
+      $db,
+      'INSERT INTO %T (startToken, endToken, randomKey) VALUES ',
+      $tableName
+    );
+
+    $data = [];
+    foreach($ranges as $range)
+    {
+      $data[] = ParseQuery::parse(
+        $db,
+        "(%s, %s, %d)",
+        $range->startToken,
+        $range->endToken,
+        $range->randomKey
+      );
+    }
+
+    $query .= implode(", ", $data);
+    Log::debug($query);
+
+    $db->query($query);
   }
 
   public function resetRanges()
