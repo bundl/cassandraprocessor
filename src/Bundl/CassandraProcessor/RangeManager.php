@@ -665,7 +665,6 @@ class RangeManager
     $processedItems = 0;
     $errors         = 0;
     $rangeStartTime = microtime(true);
-    $okToSave       = true;
     $this->_processor->resetRangeData();
     try
     {
@@ -777,11 +776,16 @@ class RangeManager
           $rangeStartTime,
           $lastKey
         );
+
+        if($errors > 0)
+        {
+          break;
+        }
       }
 
       $rangeData = $this->_processor->getRangeData();
       $range->rangeData = $rangeData ? json_encode($rangeData) : '';
-      $range->failed = $errors > 0 ? 1 : 0;
+      $range->failed = 0;
       $range->error  = "";
     }
     catch(\Exception $e)
@@ -809,8 +813,7 @@ class RangeManager
         )
       )
       {
-        $okToSave = false;
-        $this->_requeueRange($range);
+        $errors++;
       }
       else
       {
@@ -818,7 +821,11 @@ class RangeManager
       }
     }
 
-    if($okToSave)
+    if($errors > 0)
+    {
+      $this->_requeueRange($range);
+    }
+    else
     {
       $range->processing     = 0;
       $range->processed      = 1;
