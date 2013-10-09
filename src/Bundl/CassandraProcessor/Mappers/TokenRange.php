@@ -106,16 +106,16 @@ class TokenRange extends RecordMapper
 
   protected $_schemaType = self::SCHEMA_CAMELCASE;
 
-  private static $_tokenRangesTableName = 'token_ranges';
+  private static $_overrideTableName = 'token_ranges';
 
-  public static function setTableName($tableName)
+  public static function setOverrideTableName($tableName)
   {
-    self::$_tokenRangesTableName = $tableName;
+    self::$_overrideTableName = $tableName;
   }
 
-  public function getTableName()
+  public function getTableName($plural = true)
   {
-    return self::$_tokenRangesTableName;
+    return self::$_overrideTableName;
   }
 
   public function saveChanges()

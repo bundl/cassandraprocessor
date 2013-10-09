@@ -122,7 +122,7 @@ abstract class CassProcessorTask extends CliCommand
 
   public function execute()
   {
-    TokenRange::setTableName($this->_getTokenRangesTableName());
+    TokenRange::setOverrideTableName($this->_getTokenRangesTableName());
 
     // Process options
     if($this->argumentValue('debug'))
