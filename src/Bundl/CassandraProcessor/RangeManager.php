@@ -14,6 +14,7 @@ use Cubex\Cassandra\CassandraException;
 use Cubex\Cassandra\ColumnFamily;
 use Cubex\Cassandra\DataType\BytesType;
 use Cubex\Cassandra\DataType\CassandraType;
+use Cubex\Helpers\DateTimeHelper;
 use Cubex\Log\Log;
 use Cubex\Mapper\Database\RecordCollection;
 use Cubex\Mapper\Database\SearchObject;
@@ -307,19 +308,22 @@ class RangeManager
 
     $query = ParseQuery::parse(
       $db,
-      'INSERT INTO %T (startToken, endToken, randomKey) VALUES ',
+      'INSERT INTO %T (startToken, endToken, randomKey, createdAt, updatedAt) VALUES ',
       $tableName
     );
 
     $data = [];
     foreach($ranges as $range)
     {
+      $nowStr = DateTimeHelper::formattedDateFromAnything(time());
       $data[] = ParseQuery::parse(
         $db,
-        "(%s, %s, %d)",
+        "(%s, %s, %d, %s, %s)",
         $range->startToken,
         $range->endToken,
-        $range->randomKey
+        $range->randomKey,
+        $nowStr,
+        $nowStr
       );
     }
 
@@ -534,7 +538,7 @@ class RangeManager
     // Check for an already-flagged range
     $coll = new RecordCollection(new TokenRange());
     $coll->loadWhere(['processing' => 1, 'hostname' => $this->_hostname])
-    ->limit(1);
+      ->limit(1);
 
     if($coll->count() > 0)
     {
