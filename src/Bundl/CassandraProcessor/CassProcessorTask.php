@@ -15,6 +15,7 @@ use Cubex\Cli\Shell;
 use Cubex\Data\Validator\Validator;
 use Cubex\Facade\Cassandra;
 use cassandra\ConsistencyLevel;
+use Cubex\Mapper\Database\RecordCollection;
 use Psr\Log\LogLevel;
 
 abstract class CassProcessorTask extends CliCommand
@@ -211,6 +212,18 @@ abstract class CassProcessorTask extends CliCommand
       $this->_pidFile = new PidFile("", $this->_instanceName);
       $this->_initProcessingRun();
       $this->_getRangeManager()->processAll();
+    }
+  }
+
+  public function showRangeData()
+  {
+    TokenRange::setOverrideTableName($this->_getTokenRangesTableName());
+    $col = new RecordCollection(new TokenRange());
+    $col->whereNeq('rangeData', '');
+    foreach($col as $range)
+    {
+      /** @var TokenRange $range */
+      echo $range->id() . ' : ' . $range->rangeData . "\n";
     }
   }
 
