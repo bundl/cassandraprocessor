@@ -231,6 +231,7 @@ class StatsReporter
     $t->appendRow(['Last key seen', $lastKey]);
 
     ob_start();
+    echo $_REQUEST['__path__'] . "\n";
     echo $t;
     EventManager::trigger(Events::DISPLAY_REPORT_END);
     return ob_get_clean();
