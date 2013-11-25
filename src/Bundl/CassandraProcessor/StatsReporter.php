@@ -40,7 +40,6 @@ class StatsReporter
     $this->errors         = 0;
   }
 
-
   public function displayReport(
     $forceLog, TokenRange $currentRange, $rangeTotal, $rangeProcessed,
     $rangeErrors, $rangeStartTime, $lastKey
@@ -121,7 +120,6 @@ class StatsReporter
     $reportFile = $logsDir . DS . 'report.txt';
     file_put_contents($reportFile, $prettyReport);
 
-
     // Store the raw stats
     $rawStats = json_encode(
       [
@@ -177,7 +175,6 @@ class StatsReporter
     );
     Log::info("Last key: " . $lastKey);
   }
-
 
   private function _generatePrettyReport(
     TokenRange $currentRange, $now, $rangeStartTime, $rangeTotal,

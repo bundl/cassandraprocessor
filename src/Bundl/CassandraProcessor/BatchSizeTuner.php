@@ -21,7 +21,6 @@ class BatchSizeTuner
   private $_minBatchTime = 5;
   private $_maxBatchTime = 20;
 
-
   /**
    * @param int $initialBatchSize The size of the batches to start with
    * @param int $bufferSize       The number of batches to average the time
