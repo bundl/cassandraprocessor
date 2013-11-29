@@ -5,6 +5,9 @@
 
 namespace Bundl\CassandraProcessor;
 
+use cassandra\SlicePredicate;
+use cassandra\SliceRange;
+
 abstract class ItemProcessor
 {
   /**
@@ -42,8 +45,9 @@ abstract class ItemProcessor
   /**
    * List of columns required from the Cassandra items.
    * null = all columns, array() = none (just keys)
+   * If an integer is returned then the first n columns will be fetched
    *
-   * @return null|array
+   * @return null|array|int|SlicePredicate|SliceRange
    */
   public function requiredColumns()
   {

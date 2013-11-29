@@ -6,6 +6,7 @@
 namespace Bundl\CassandraProcessor;
 
 use Bundl\CassandraProcessor\Mappers\TokenRange;
+use cassandra\SlicePredicate;
 use Cubex\Cli\Shell;
 use Cubex\Database\IDatabaseService;
 use Cubex\Events\EventManager;
@@ -80,6 +81,8 @@ class RangeManager
     $this->_batchSizeTuner->setBatchSizeLimitsArr(
       $this->_processor->getBatchSize()
     );
+
+    $this->_lastStartKey = 0;
   }
 
   private function _calcMinMaxTokens()
@@ -676,6 +679,12 @@ class RangeManager
     {
       $cf   = $this->_getCF();
       $cols = $this->_processor->requiredColumns();
+      if(is_numeric($cols))
+      {
+        $cols = new SlicePredicate(
+          ['slice_range' => $cf->makeSlice('', '', false, $cols)]
+        );
+      }
 
       $lastKey      = $range->firstKey ? $range->firstKey : "";
       $rangeLastKey = $range->lastKey ? $range->lastKey : "";
