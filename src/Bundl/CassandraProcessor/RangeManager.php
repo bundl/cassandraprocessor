@@ -46,6 +46,7 @@ class RangeManager
   private $_hostname;
   private $_statsReporter;
   private $_batchSizeTuner;
+  private $_lastStartKey;
 
   public function __construct(
     $cassandraServiceName, $columnFamily,
@@ -546,7 +547,7 @@ class RangeManager
     }
     else
     {
-      $startKey = 0;
+      $startKey = $this->_lastStartKey;
       $res = false;
       while(true)
       {
@@ -566,6 +567,7 @@ class RangeManager
 
         if(($res && ($db->affectedRows() > 0)) || ($startKey > 10000))
         {
+          $this->_lastStartKey = $startKey;
           break;
         }
         $startKey += 100;
