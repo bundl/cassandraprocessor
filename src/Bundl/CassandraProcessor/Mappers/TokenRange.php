@@ -107,15 +107,23 @@ class TokenRange extends RecordMapper
   protected $_schemaType = self::SCHEMA_CAMELCASE;
 
   private static $_overrideTableName = 'token_ranges';
+  private static $_overrideServiceName = 'db';
 
   public static function setOverrideTableName($tableName)
   {
     self::$_overrideTableName = $tableName;
   }
 
-  public function getTableName($plural = true)
+  public static function setOverrideServiceName($serviceName)
   {
-    return self::$_overrideTableName;
+    self::$_overrideServiceName = $serviceName;
+  }
+
+  public function __construct($id = null, $columns = ['*'])
+  {
+    $this->setTableName(self::$_overrideTableName);
+    $this->setServiceName(self::$_overrideServiceName);
+    parent::__construct($id, $columns);
   }
 
   public function saveChanges()

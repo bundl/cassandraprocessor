@@ -119,12 +119,12 @@ abstract class CassProcessorTask extends CliCommand
     {
       ProcessorOptions::setDryRun(true);
     }
+    TokenRange::setOverrideTableName($this->_getTokenRangesTableName());
+    TokenRange::setOverrideServiceName($this->_getTokenRangesDBServiceName());
   }
 
   public function execute()
   {
-    TokenRange::setOverrideTableName($this->_getTokenRangesTableName());
-
     // Process options
     if($this->argumentValue('debug'))
     {
@@ -217,7 +217,6 @@ abstract class CassProcessorTask extends CliCommand
 
   public function showRangeData()
   {
-    TokenRange::setOverrideTableName($this->_getTokenRangesTableName());
     $col = new RecordCollection(new TokenRange());
     $col->whereNeq('rangeData', '');
     foreach($col as $range)
@@ -344,6 +343,16 @@ abstract class CassProcessorTask extends CliCommand
   protected function _getTokenRangesTableName()
   {
     return 'token_ranges';
+  }
+
+  /**
+   * Return the name of the DB service that contains the token ranges table
+   *
+   * @return string
+   */
+  protected function _getTokenRangesDBServiceName()
+  {
+    return 'db';
   }
 
   /**
