@@ -590,6 +590,7 @@ class RangeManager
 
   public function processAll()
   {
+    Log::info('Cassandra Processor started');
     $this->_statsReporter->resetCounters();
     while(true)
     {
