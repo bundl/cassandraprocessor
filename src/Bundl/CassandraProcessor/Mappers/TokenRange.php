@@ -31,12 +31,12 @@ class TokenRange extends RecordMapper
    */
   public $endToken = '';
   /**
-   * @datatype varchar(255)
+   * @datatype varchar(1024)
    * @notnull
    */
   public $firstKey = '';
   /**
-   * @datatype varchar(255)
+   * @datatype varchar(1024)
    * @notnull
    */
   public $lastKey = '';
