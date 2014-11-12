@@ -6,6 +6,8 @@
 namespace Bundl\CassandraProcessor;
 
 use Bundl\CassandraProcessor\Mappers\TokenRange;
+use Bundl\CassandraProcessor\Tools\Lib\RangeStats;
+use Bundl\CassandraProcessor\Tools\LiveStats;
 use Bundl\Debugger\DebuggerBundle;
 use Cubex\Cli\CliArgument;
 use Cubex\Cli\CliCommand;
@@ -15,6 +17,8 @@ use Cubex\Cli\Shell;
 use Cubex\Data\Validator\Validator;
 use Cubex\Facade\Cassandra;
 use cassandra\ConsistencyLevel;
+use Cubex\Foundation\Container;
+use Cubex\Loader;
 use Cubex\Mapper\Database\RecordCollection;
 use Psr\Log\LogLevel;
 
@@ -24,6 +28,9 @@ abstract class CassProcessorTask extends CliCommand
   protected $_enableDebug = false;
   protected $_displayReport = true;
   private $_rangeManager = null;
+  /**
+   * @var PidFile
+   */
   private $_pidFile = null;
   protected $_defaultLogLevel = LogLevel::INFO;
 
@@ -107,6 +114,10 @@ abstract class CassProcessorTask extends CliCommand
         'reset-processing',
         'Reset all ranges that are flagged as processing. USE WITH CARE.'
       ),
+      new CliArgument(
+        'live-stats',
+        'Show the stats for this script on all nodes'
+      ),
     ];
   }
 
@@ -147,7 +158,7 @@ abstract class CassProcessorTask extends CliCommand
     $resetFailed     = $this->argumentIsSet('reset-failed');
     $listFailed      = $this->argumentIsSet('list-failed') ?
       $this->argumentValue('list-failed') : false;
-    $listRequeued      = $this->argumentIsSet('list-requeued') ?
+    $listRequeued    = $this->argumentIsSet('list-requeued') ?
       $this->argumentValue('list-requeued') : false;
     $instanceCount   = $this->argumentValue('instances', 1);
     if($resetRangeId)
@@ -200,6 +211,17 @@ abstract class CassProcessorTask extends CliCommand
     else if($resetProcessing)
     {
       $this->_getRangeManager()->resetProcessingRanges();
+    }
+    else if($this->argumentValue('live-stats'))
+    {
+      (
+      new LiveStats(
+        new RangeStats(
+          $this->_getTokenRangesDBServiceName(),
+          $this->_getTokenRangesTableName()
+        )
+      )
+      )->execute();
     }
     else
     {
